@@ -1,0 +1,2 @@
+echo "format rust code...."
+cargo +nightly fmt
