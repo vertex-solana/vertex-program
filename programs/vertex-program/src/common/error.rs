@@ -10,4 +10,8 @@ pub enum VertexError {
   InvalidOperator,
   #[msg("Not enough remaining amount")]
   NotEnoughRemainingAmount,
+  #[msg("Insufficient funds in indexer vault")]
+  InsufficientFundsInIndexerVault,
+  #[msg("Insufficient funds in system vault")]
+  InsufficientFundsInSystemVault,
 }

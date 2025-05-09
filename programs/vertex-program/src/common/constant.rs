@@ -3,6 +3,7 @@ pub const DISCRIMINATOR: usize = 8;
 pub mod seeds_prefix {
   pub const USER_VAULT: &[u8] = b"user_vault";
   pub const INDEXER: &[u8] = b"indexer";
+  pub const SYSTEM_AUTHORITY: &[u8] = b"system_authority";
 }
 
 pub mod fee {
