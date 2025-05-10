@@ -6,7 +6,9 @@ import {
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
+  sendAndConfirmTransaction,
   SystemProgram,
+  Transaction,
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import {
@@ -43,6 +45,7 @@ describe("vertex-program", () => {
   const USDC_DECIMALS = 6;
   const TOTAL_SUPPLY_USDC = 1_000_000_000 * Math.pow(10, USDC_DECIMALS);
   const usdcMint = USDC_KEYPAIR.publicKey;
+  console.log("🚀 ~ usdcMint:", usdcMint.toBase58());
   const providerAtaUsdc = getAssociatedTokenAddressSync(
     usdcMint,
     providerWallet.publicKey
@@ -53,6 +56,7 @@ describe("vertex-program", () => {
   const operatorKeypair = Keypair.fromSecretKey(
     bs58.decode(OPERATOR_PRIVATEKEY)
   );
+  console.log("🚀 ~ operator:", operatorKeypair.publicKey.toBase58());
   const CREATOR_INDEXER_PRIVATEKEY =
     "4B5BimV9HovYn1GkBbVWxAZbqziith4U4NXVJHFcBL3xdpKf7BwRN1Xtdhr2cfpLaNSjHHrMouvetAs6HYFRo6R2";
   const READER_INDEXER_PRIVATEKEY =
@@ -60,15 +64,20 @@ describe("vertex-program", () => {
   const creatorIndexerKeypair = Keypair.fromSecretKey(
     bs58.decode(CREATOR_INDEXER_PRIVATEKEY)
   );
+  console.log(
+    "🚀 ~ creatorIndexer:",
+    creatorIndexerKeypair.publicKey.toBase58()
+  );
   const readerIndexerKeypair = Keypair.fromSecretKey(
     bs58.decode(READER_INDEXER_PRIVATEKEY)
   );
+  console.log("🚀 ~ readerIndexer:", readerIndexerKeypair.publicKey.toBase58());
 
   xit("Airdrop and create mints", async () => {
     let lamports = await getMinimumBalanceForRentExemptMint(
       new Connection(connection.rpcEndpoint)
     );
-    let tx = new anchor.web3.Transaction();
+    let tx = new Transaction();
 
     tx.instructions = [
       SystemProgram.transfer({
@@ -123,9 +132,18 @@ describe("vertex-program", () => {
       ],
     ];
 
-    await provider
-      .sendAndConfirm(tx, [USDC_KEYPAIR, providerWallet])
-      .then((sig) => log(connection, sig));
+    const blockhash = await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash.blockhash;
+    tx.feePayer = providerWallet.publicKey;
+
+    await sendAndConfirmTransaction(
+      connection,
+      tx,
+      [USDC_KEYPAIR, providerWallet],
+      {
+        commitment: "finalized",
+      }
+    );
 
     const creatorIndexerAtaUsdc = await getOrCreateAssociatedTokenAccount(
       connection,
@@ -212,8 +230,8 @@ describe("vertex-program", () => {
       }
     });
 
-    xit("Success init system vault", async () => {
-      const tx = new anchor.web3.Transaction();
+    it("Success init system vault", async () => {
+      const tx = new Transaction();
 
       const systemAuthority = PublicKey.findProgramAddressSync(
         seeds.systemAuthority(),
@@ -239,7 +257,13 @@ describe("vertex-program", () => {
         })
       );
 
-      await provider.sendAndConfirm(tx, [operatorKeypair]);
+      const blockhash = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+      tx.feePayer = operatorKeypair.publicKey;
+
+      await sendAndConfirmTransaction(connection, tx, [operatorKeypair], {
+        commitment: "finalized",
+      });
 
       const systemAuthorityAccount =
         await program.account.systemAuthority.fetch(systemAuthority);
@@ -254,7 +278,7 @@ describe("vertex-program", () => {
 
   xdescribe("Setup User Vault", () => {
     it("Success init user vault", async () => {
-      const tx = new anchor.web3.Transaction();
+      const tx = new Transaction();
 
       const creatorIndexerVault = PublicKey.findProgramAddressSync(
         seeds.userVault(creatorIndexerKeypair.publicKey),
@@ -279,10 +303,18 @@ describe("vertex-program", () => {
         })
       );
 
-      await provider.sendAndConfirm(tx, [
-        creatorIndexerKeypair,
-        readerIndexerKeypair,
-      ]);
+      const blockhash = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+      tx.feePayer = creatorIndexerKeypair.publicKey;
+
+      await sendAndConfirmTransaction(
+        connection,
+        tx,
+        [creatorIndexerKeypair, readerIndexerKeypair],
+        {
+          commitment: "finalized",
+        }
+      );
 
       const creatorIndexerVaultAccount = await program.account.userVault.fetch(
         creatorIndexerVault
@@ -309,14 +341,26 @@ describe("vertex-program", () => {
 
   describe("Deposit", () => {
     it("Success deposit", async () => {
-      const tx = new anchor.web3.Transaction();
-      const amount = 100 * Math.pow(10, USDC_DECIMALS);
+      const tx = new Transaction();
+      const amount = 1 * Math.pow(10, USDC_DECIMALS);
+
+      const creatorIndexerAta = getAssociatedTokenAddressSync(
+        usdcMint,
+        creatorIndexerKeypair.publicKey,
+        false,
+        TOKEN_PROGRAM_ID
+      );
+      const readerIndexerAta = getAssociatedTokenAddressSync(
+        usdcMint,
+        readerIndexerKeypair.publicKey,
+        false,
+        TOKEN_PROGRAM_ID
+      );
 
       const creatorIndexerVault = PublicKey.findProgramAddressSync(
         seeds.userVault(creatorIndexerKeypair.publicKey),
         program.programId
       )[0];
-
       const readerIndexerVault = PublicKey.findProgramAddressSync(
         seeds.userVault(readerIndexerKeypair.publicKey),
         program.programId
@@ -324,31 +368,39 @@ describe("vertex-program", () => {
 
       const creatorIndexerVaultAta = getAssociatedTokenAddressSync(
         usdcMint,
-        creatorIndexerKeypair.publicKey,
+        creatorIndexerVault,
         true,
         TOKEN_PROGRAM_ID
       );
 
       const readerIndexerVaultAta = getAssociatedTokenAddressSync(
         usdcMint,
-        readerIndexerKeypair.publicKey,
+        readerIndexerVault,
         true,
         TOKEN_PROGRAM_ID
       );
 
       const creatorIndexerVaultAccountBefore =
         await program.account.userVault.fetch(creatorIndexerVault);
-      const creatorIndexerVaultAtaAccountBefore = await getAccount(
-        connection,
-        creatorIndexerVaultAta
-      );
+      let creatorIndexerVaultAtaAccountBeforeAmount: bigint;
+      try {
+        creatorIndexerVaultAtaAccountBeforeAmount = (
+          await getAccount(connection, creatorIndexerVaultAta)
+        ).amount;
+      } catch (error) {
+        creatorIndexerVaultAtaAccountBeforeAmount = BigInt(0);
+      }
 
       const readerIndexerVaultAccountBefore =
         await program.account.userVault.fetch(readerIndexerVault);
-      const readerIndexerVaultAtaAccountBefore = await getAccount(
-        connection,
-        readerIndexerVaultAta
-      );
+      let readerIndexerVaultAtaAccountBeforeAmount: bigint;
+      try {
+        readerIndexerVaultAtaAccountBeforeAmount = (
+          await getAccount(connection, readerIndexerVaultAta)
+        ).amount;
+      } catch (error) {
+        readerIndexerVaultAtaAccountBeforeAmount = BigInt(0);
+      }
 
       tx.add(
         await depositIx(provider.connection, {
@@ -358,7 +410,7 @@ describe("vertex-program", () => {
           payer: creatorIndexerKeypair.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          userAta: creatorIndexerVaultAta,
+          userAta: creatorIndexerAta,
           userVault: creatorIndexerVault,
           userVaultAta: creatorIndexerVaultAta,
         }),
@@ -369,16 +421,23 @@ describe("vertex-program", () => {
           payer: readerIndexerKeypair.publicKey,
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          userAta: readerIndexerVaultAta,
+          userAta: readerIndexerAta,
           userVault: readerIndexerVault,
           userVaultAta: readerIndexerVaultAta,
         })
       );
 
-      await provider.sendAndConfirm(tx, [
-        creatorIndexerKeypair,
-        readerIndexerKeypair,
-      ]);
+      const blockhash = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+
+      await sendAndConfirmTransaction(
+        connection,
+        tx,
+        [creatorIndexerKeypair, readerIndexerKeypair],
+        {
+          commitment: "finalized",
+        }
+      );
 
       const creatorIndexerVaultAccount = await program.account.userVault.fetch(
         creatorIndexerVault
@@ -407,7 +466,7 @@ describe("vertex-program", () => {
       );
       assert.equal(
         creatorIndexerAtaAccount.value.amount,
-        new anchor.BN(creatorIndexerVaultAtaAccountBefore.amount.toString())
+        new anchor.BN(creatorIndexerVaultAtaAccountBeforeAmount.toString())
           .add(new anchor.BN(amount))
           .toString()
       );
@@ -426,7 +485,7 @@ describe("vertex-program", () => {
       );
       assert.equal(
         readerIndexerAtaAccount.value.amount,
-        new anchor.BN(readerIndexerVaultAtaAccountBefore.amount.toString())
+        new anchor.BN(readerIndexerVaultAtaAccountBeforeAmount.toString())
           .add(new anchor.BN(amount))
           .toString()
       );
