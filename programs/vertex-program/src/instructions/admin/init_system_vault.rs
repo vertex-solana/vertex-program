@@ -1,7 +1,7 @@
 use {
   crate::{
     common::{
-      constant::{fee::TOKEN_FEE_KEY, seeds_prefix, DISCRIMINATOR},
+      constant::{fee::TOKEN_FEE_KEY, seeds_prefix, system::OPERATOR_KEY, DISCRIMINATOR},
       error::VertexError,
       event::InitSystemVaultEvent,
     },
@@ -30,7 +30,10 @@ pub fn process(ctx: Context<InitSystemVault>) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct InitSystemVault<'info> {
-  #[account(mut)]
+  #[account(
+    mut,
+    constraint = operator.key() == OPERATOR_KEY @ VertexError::InvalidOperator,
+  )]
   pub operator: Signer<'info>,
 
   #[account(

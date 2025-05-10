@@ -13,7 +13,7 @@ pub mod fee {
   pub const TOKEN_FEE_KEY: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
   #[cfg(not(feature = "mainnet"))]
-  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("Gh9ZwArxWrnqvyTPaQ1iWUBd8xHs7x1tq6a7uDNwZdpy");
+  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("bEinDkpqnDrKbYgJ9EuUD1x7MqZxbXb9U7bCoS92KvW");
 }
 
 pub mod system {
@@ -24,5 +24,5 @@ pub mod system {
   pub const OPERATOR_KEY: Pubkey = pubkey!("3TmfTPbhV6QDsu6kTbdkFTYKNjJQoTwLHBcb65CE1M3U");
 
   #[cfg(not(feature = "mainnet"))]
-  pub const OPERATOR_KEY: Pubkey = pubkey!("3TmfTPbhV6QDsu6kTbdkFTYKNjJQoTwLHBcb65CE1M3U");
+  pub const OPERATOR_KEY: Pubkey = pubkey!("bN5TqUQXSV7UsjoEKNeYm2gm3Qcy3KzxngAvpXeXuz7");
 }

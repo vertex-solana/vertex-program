@@ -6,7 +6,7 @@ use instructions::*;
 mod common;
 mod utils;
 
-declare_id!("9bRE8rbemawE439Fyh91LSnG83hrsSaGg4pjuJ7CpEPT");
+declare_id!("ENQJbjpnrTJus45f5kUg5M2LN9Sozf7JfZ9nAV3GVNZD");
 
 #[program]
 pub mod vertex_program {
