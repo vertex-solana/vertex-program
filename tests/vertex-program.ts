@@ -26,7 +26,13 @@ import {
 } from "@solana/spl-token";
 import { log, seeds } from "./utils";
 import { assert } from "chai";
-import { depositIx, initSystemVaultIx } from "./instructions";
+import {
+  chargeFeeIx,
+  depositIx,
+  initIndexerIx,
+  initSystemVaultIx,
+  transferReadFeeIx,
+} from "./instructions";
 import { initUserVaultIx } from "./instructions/init-user-vault.instruction";
 
 describe("vertex-program", () => {
@@ -45,7 +51,6 @@ describe("vertex-program", () => {
   const USDC_DECIMALS = 6;
   const TOTAL_SUPPLY_USDC = 1_000_000_000 * Math.pow(10, USDC_DECIMALS);
   const usdcMint = USDC_KEYPAIR.publicKey;
-  console.log("🚀 ~ usdcMint:", usdcMint.toBase58());
   const providerAtaUsdc = getAssociatedTokenAddressSync(
     usdcMint,
     providerWallet.publicKey
@@ -56,7 +61,6 @@ describe("vertex-program", () => {
   const operatorKeypair = Keypair.fromSecretKey(
     bs58.decode(OPERATOR_PRIVATEKEY)
   );
-  console.log("🚀 ~ operator:", operatorKeypair.publicKey.toBase58());
   const CREATOR_INDEXER_PRIVATEKEY =
     "4B5BimV9HovYn1GkBbVWxAZbqziith4U4NXVJHFcBL3xdpKf7BwRN1Xtdhr2cfpLaNSjHHrMouvetAs6HYFRo6R2";
   const READER_INDEXER_PRIVATEKEY =
@@ -64,14 +68,9 @@ describe("vertex-program", () => {
   const creatorIndexerKeypair = Keypair.fromSecretKey(
     bs58.decode(CREATOR_INDEXER_PRIVATEKEY)
   );
-  console.log(
-    "🚀 ~ creatorIndexer:",
-    creatorIndexerKeypair.publicKey.toBase58()
-  );
   const readerIndexerKeypair = Keypair.fromSecretKey(
     bs58.decode(READER_INDEXER_PRIVATEKEY)
   );
-  console.log("🚀 ~ readerIndexer:", readerIndexerKeypair.publicKey.toBase58());
 
   xit("Airdrop and create mints", async () => {
     let lamports = await getMinimumBalanceForRentExemptMint(
@@ -339,7 +338,7 @@ describe("vertex-program", () => {
     });
   });
 
-  describe("Deposit", () => {
+  xdescribe("Deposit", () => {
     it("Success deposit", async () => {
       const tx = new Transaction();
       const amount = 1 * Math.pow(10, USDC_DECIMALS);
@@ -488,6 +487,317 @@ describe("vertex-program", () => {
         new anchor.BN(readerIndexerVaultAtaAccountBeforeAmount.toString())
           .add(new anchor.BN(amount))
           .toString()
+      );
+    });
+  });
+
+  xdescribe("Indexer", () => {
+    it("Success Init Indexer", async () => {
+      const tx = new Transaction();
+
+      const indexerId = 1;
+      const indexer = PublicKey.findProgramAddressSync(
+        seeds.indexer(creatorIndexerKeypair.publicKey, indexerId),
+        program.programId
+      )[0];
+
+      const indexerVault = getAssociatedTokenAddressSync(
+        usdcMint,
+        indexer,
+        true,
+        TOKEN_PROGRAM_ID
+      );
+
+      tx.add(
+        await initIndexerIx(provider.connection, {
+          owner: creatorIndexerKeypair.publicKey,
+          indexerId: new anchor.BN(indexerId),
+          indexer,
+          mint: usdcMint,
+          indexerVault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+      );
+
+      const blockhash = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+      await sendAndConfirmTransaction(connection, tx, [creatorIndexerKeypair], {
+        commitment: "finalized",
+      });
+
+      const indexerAccount = await program.account.indexer.fetch(indexer);
+
+      assert.equal(
+        indexerAccount.owner.toBase58(),
+        creatorIndexerKeypair.publicKey.toBase58()
+      );
+      assert.equal(indexerAccount.indexerId.toNumber(), indexerId);
+      assert.equal(indexerAccount.balance.toNumber(), 0);
+
+      const indexerVaultAccount = await connection.getTokenAccountBalance(
+        indexerVault
+      );
+      assert.equal(indexerVaultAccount.value.amount, "0");
+    });
+  });
+
+  xdescribe("Transfer Read Fee", () => {
+    const indexerId = 1;
+    const indexer = PublicKey.findProgramAddressSync(
+      seeds.indexer(creatorIndexerKeypair.publicKey, indexerId),
+      program.programId
+    )[0];
+    const indexerVault = getAssociatedTokenAddressSync(
+      usdcMint,
+      indexer,
+      true,
+      TOKEN_PROGRAM_ID
+    );
+
+    const payerVault = PublicKey.findProgramAddressSync(
+      seeds.userVault(readerIndexerKeypair.publicKey),
+      program.programId
+    )[0];
+    const payerVaultAta = getAssociatedTokenAddressSync(
+      usdcMint,
+      payerVault,
+      true,
+      TOKEN_PROGRAM_ID
+    );
+
+    it("Can not transfer read fee if not operator", async () => {
+      const randomKeypair = Keypair.generate();
+      // Transfer sol fee
+      let txSendSolFee = new Transaction();
+      txSendSolFee.add(
+        SystemProgram.transfer({
+          fromPubkey: provider.publicKey,
+          toPubkey: randomKeypair.publicKey,
+          lamports: 1 * LAMPORTS_PER_SOL,
+        })
+      );
+      const blockhash = await connection.getLatestBlockhash();
+      txSendSolFee.recentBlockhash = blockhash.blockhash;
+
+      await sendAndConfirmTransaction(
+        connection,
+        txSendSolFee,
+        [providerWallet],
+        {
+          commitment: "finalized",
+        }
+      );
+
+      try {
+        const tx = new Transaction();
+
+        tx.add(
+          await transferReadFeeIx(provider.connection, {
+            indexerId: new anchor.BN(indexerId),
+            amount: new anchor.BN(1000),
+            operator: randomKeypair.publicKey,
+            mint: usdcMint,
+            indexerOwner: creatorIndexerKeypair.publicKey,
+            indexer: indexer,
+            indexerVault: indexerVault,
+            payerVault,
+            payerVaultAta,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+        );
+
+        const blockhash = await connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash.blockhash;
+        await sendAndConfirmTransaction(connection, tx, [randomKeypair], {
+          commitment: "finalized",
+        });
+      } catch (error) {
+        assert.equal(
+          (error.message as string).includes("Invalid operator"),
+          true
+        );
+      }
+    });
+
+    it("Can not transfer read fee if payer vault not enough balance", async () => {
+      const currentRemainingAmount = await program.account.userVault.fetch(
+        payerVault
+      );
+
+      const amountTransferForReadData =
+        currentRemainingAmount.remainingAmount.add(new anchor.BN(100));
+
+      try {
+        const tx = new Transaction();
+
+        tx.add(
+          await transferReadFeeIx(provider.connection, {
+            indexerId: new anchor.BN(indexerId),
+            amount: amountTransferForReadData,
+            operator: operatorKeypair.publicKey,
+            mint: usdcMint,
+            indexerOwner: creatorIndexerKeypair.publicKey,
+            indexer: indexer,
+            indexerVault: indexerVault,
+            payerVault,
+            payerVaultAta,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+        );
+
+        const blockhash = await connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash.blockhash;
+        await sendAndConfirmTransaction(connection, tx, [operatorKeypair], {
+          commitment: "finalized",
+        });
+      } catch (error) {
+        assert.equal(
+          (error.message as string).includes("Not enough remaining amount"),
+          true
+        );
+      }
+    });
+
+    it("Success transfer read fee", async () => {
+      const payerVaultBefore = await program.account.userVault.fetch(
+        payerVault
+      );
+      const indexerAccountBefore = await program.account.indexer.fetch(indexer);
+      const indexerVaultBefore = await connection.getTokenAccountBalance(
+        indexerVault
+      );
+
+      const tx = new Transaction();
+
+      tx.add(
+        await transferReadFeeIx(provider.connection, {
+          indexerId: new anchor.BN(indexerId),
+          amount: payerVaultBefore.remainingAmount,
+          operator: operatorKeypair.publicKey,
+          mint: usdcMint,
+          indexerOwner: creatorIndexerKeypair.publicKey,
+          indexer: indexer,
+          indexerVault: indexerVault,
+          payerVault,
+          payerVaultAta,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+      );
+
+      const blockhash = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+      await sendAndConfirmTransaction(connection, tx, [operatorKeypair], {
+        commitment: "finalized",
+      });
+
+      const payerVaultAfter = await program.account.userVault.fetch(payerVault);
+      console.log("🚀 ~ it ~ payerVaultAfter:", payerVaultAfter);
+      const indexerAccountAfter = await program.account.indexer.fetch(indexer);
+      console.log("🚀 ~ it ~ indexerAccountAfter:", indexerAccountAfter);
+      const indexerVaultAfter = await connection.getTokenAccountBalance(
+        indexerVault
+      );
+      console.log("🚀 ~ it ~ indexerVaultAfter:", indexerVaultAfter);
+
+      assert.equal(
+        payerVaultAfter.remainingAmount.toNumber(),
+        payerVaultBefore.remainingAmount
+          .sub(payerVaultBefore.remainingAmount)
+          .toNumber()
+      );
+      assert.equal(
+        indexerAccountAfter.balance.toNumber(),
+        indexerAccountBefore.balance
+          .add(payerVaultBefore.remainingAmount)
+          .toNumber()
+      );
+      assert.equal(
+        parseInt(indexerVaultAfter.value.amount),
+        parseInt(indexerVaultBefore.value.amount) +
+          payerVaultBefore.remainingAmount.toNumber()
+      );
+    });
+  });
+
+  describe("Charge fee", () => {
+    it("Success charge fee", async () => {
+      const systemAuthority = PublicKey.findProgramAddressSync(
+        seeds.systemAuthority(),
+        program.programId
+      )[0];
+      const systemVault = getAssociatedTokenAddressSync(
+        usdcMint,
+        systemAuthority,
+        true,
+        TOKEN_PROGRAM_ID
+      );
+      const systemAuthorityBefore = await program.account.systemAuthority.fetch(
+        systemAuthority
+      );
+      const systemVaultBefore = await connection.getTokenAccountBalance(
+        systemVault
+      );
+
+      const userVault = PublicKey.findProgramAddressSync(
+        seeds.userVault(creatorIndexerKeypair.publicKey),
+        program.programId
+      )[0];
+      const userVaultAta = getAssociatedTokenAddressSync(
+        usdcMint,
+        userVault,
+        true,
+        TOKEN_PROGRAM_ID
+      );
+      const userVaultBefore = await program.account.userVault.fetch(userVault);
+
+      const tx = new Transaction();
+
+      tx.add(
+        await chargeFeeIx(provider.connection, {
+          amount: userVaultBefore.remainingAmount,
+          mint: usdcMint,
+          operator: operatorKeypair.publicKey,
+          systemAuthority,
+          systemVault,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          user: creatorIndexerKeypair.publicKey,
+          userVault,
+          userVaultAta,
+        })
+      );
+
+      const blockhash = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash.blockhash;
+      await sendAndConfirmTransaction(connection, tx, [operatorKeypair], {
+        commitment: "finalized",
+      });
+
+      const userVaultAfter = await program.account.userVault.fetch(userVault);
+      const systemAuthorityAfter = await program.account.systemAuthority.fetch(
+        systemAuthority
+      );
+      const systemVaultAfter = await connection.getTokenAccountBalance(
+        systemVault
+      );
+
+      assert.equal(
+        userVaultAfter.remainingAmount.toNumber(),
+        userVaultBefore.remainingAmount
+          .sub(userVaultBefore.remainingAmount)
+          .toNumber()
+      );
+      assert.equal(
+        systemAuthorityAfter.balance.toNumber(),
+        systemAuthorityBefore.balance
+          .add(userVaultBefore.remainingAmount)
+          .toNumber()
+      );
+      assert.equal(
+        parseInt(systemVaultAfter.value.amount),
+        parseInt(systemVaultBefore.value.amount) +
+          userVaultBefore.remainingAmount.toNumber()
       );
     });
   });

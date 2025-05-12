@@ -19,8 +19,11 @@ pub fn process(ctx: Context<TransferReadFee>, amount: u64) -> Result<()> {
     return err!(VertexError::NotEnoughRemainingAmount);
   }
 
-  let payer_vault_signer_seeds: &[&[&[u8]]] =
-    &[&[seeds_prefix::USER_VAULT, payer_vault.owner.as_ref()]];
+  let payer_vault_signer_seeds: &[&[&[u8]]] = &[&[
+    seeds_prefix::USER_VAULT,
+    payer_vault.owner.as_ref(),
+    &[ctx.bumps.payer_vault],
+  ]];
 
   token_transfer::transfer_read_fee(
     ctx.accounts.payer_vault.to_account_info(),
@@ -64,6 +67,7 @@ pub struct TransferReadFee<'info> {
   pub indexer_owner: SystemAccount<'info>,
 
   #[account(
+    mut,
     seeds = [seeds_prefix::INDEXER, indexer_owner.key().as_ref(), indexer_id.to_le_bytes().as_ref()],
     bump
   )]
@@ -76,7 +80,11 @@ pub struct TransferReadFee<'info> {
   )]
   pub indexer_vault: InterfaceAccount<'info, TokenAccount>,
 
-  #[account(mut)]
+  #[account(
+    mut,
+    seeds = [seeds_prefix::USER_VAULT, payer_vault.owner.key().as_ref()],
+    bump
+  )]
   pub payer_vault: Account<'info, UserVault>,
 
   #[account(

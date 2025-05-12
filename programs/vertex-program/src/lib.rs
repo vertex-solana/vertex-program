@@ -28,7 +28,11 @@ pub mod vertex_program {
     init_indexer::process(ctx, indexer_id)
   }
 
-  pub fn transfer_read_fee(ctx: Context<TransferReadFee>, amount: u64) -> Result<()> {
+  pub fn transfer_read_fee(
+    ctx: Context<TransferReadFee>,
+    _indexer_id: u64,
+    amount: u64,
+  ) -> Result<()> {
     admin::transfer_read_fee::process(ctx, amount)
   }
 

@@ -69,7 +69,7 @@ pub struct ChargeFee<'info> {
   #[account(
     mut,
     associated_token::mint = mint,
-    associated_token::authority = operator,
+    associated_token::authority = user_vault,
   )]
   pub user_vault_ata: InterfaceAccount<'info, TokenAccount>,
 
