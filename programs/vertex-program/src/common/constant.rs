@@ -10,10 +10,13 @@ pub mod fee {
   use anchor_lang::{prelude::Pubkey, pubkey};
 
   #[cfg(feature = "mainnet")]
-  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("CQSPeAziWSXpe2zu5jRR7FpVkoee53EKEx82tgpUh4V8");
 
-  #[cfg(not(feature = "mainnet"))]
-  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("bEinDkpqnDrKbYgJ9EuUD1x7MqZxbXb9U7bCoS92KvW");
+  #[cfg(feature = "devnet")]
+  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("CQSPeAziWSXpe2zu5jRR7FpVkoee53EKEx82tgpUh4V8");
+
+  #[cfg(all(not(feature = "mainnet"), not(feature = "devnet")))]
+  pub const TOKEN_FEE_KEY: Pubkey = pubkey!("CQSPeAziWSXpe2zu5jRR7FpVkoee53EKEx82tgpUh4V8");
 }
 
 pub mod system {
@@ -21,8 +24,11 @@ pub mod system {
 
   // TODO: Update operator key
   #[cfg(feature = "mainnet")]
-  pub const OPERATOR_KEY: Pubkey = pubkey!("3TmfTPbhV6QDsu6kTbdkFTYKNjJQoTwLHBcb65CE1M3U");
+  pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
 
-  #[cfg(not(feature = "mainnet"))]
-  pub const OPERATOR_KEY: Pubkey = pubkey!("bN5TqUQXSV7UsjoEKNeYm2gm3Qcy3KzxngAvpXeXuz7");
+  #[cfg(feature = "devnet")]
+  pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
+
+  #[cfg(all(not(feature = "mainnet"), not(feature = "devnet")))]
+  pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
 }
