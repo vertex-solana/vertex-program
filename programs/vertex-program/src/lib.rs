@@ -1,12 +1,15 @@
 use anchor_lang::prelude::*;
 
+mod program_id;
+use program_id::PROGRAM_ID;
+
 mod instructions;
 mod states;
 use instructions::*;
 mod common;
 mod utils;
 
-declare_id!("ENQJbjpnrTJus45f5kUg5M2LN9Sozf7JfZ9nAV3GVNZD");
+declare_id!(PROGRAM_ID);
 
 #[program]
 pub mod vertex_program {
