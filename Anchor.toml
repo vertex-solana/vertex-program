@@ -1,5 +1,7 @@
 [toolchain]
-solana-cli = "2.1.5"
+solana-cli = "2.1.21"
+channel = "1.82.0"
+anchor = "0.31.1"
 
 [features]
 resolution = true
