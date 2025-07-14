@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 #[derive(Debug, InitSpace)]
 pub struct Indexer {
   pub owner: Pubkey,
-  pub balance: u64,
+  pub bump: u8,
   pub indexer_id: u64,
+  pub price_per_gb_lamports: u64,
 }
