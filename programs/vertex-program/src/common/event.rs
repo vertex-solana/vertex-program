@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 #[event]
 pub struct InitSystemVaultEvent {
   pub system_authority: Pubkey,
-  pub system_vault: Pubkey,
 }
 
 #[event]
