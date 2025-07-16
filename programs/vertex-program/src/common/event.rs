@@ -12,6 +12,11 @@ pub struct InitUserVaultEvent {
 }
 
 #[event]
+pub struct DelegateUserVaultEvent {
+  pub user_vault: Pubkey,
+}
+
+#[event]
 pub struct DepositToVaultEvent {
   pub user: Pubkey,
   pub user_vault: Pubkey,

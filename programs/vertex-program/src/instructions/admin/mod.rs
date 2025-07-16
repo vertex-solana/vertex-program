@@ -1,3 +1,6 @@
+pub mod delegate_user_vault;
+pub use delegate_user_vault::*;
+
 pub mod transfer_read_fee;
 pub use transfer_read_fee::*;
 

@@ -23,6 +23,10 @@ pub mod vertex_program {
     init_user_vault::process(ctx)
   }
 
+  pub fn delegate_user_vault(ctx: Context<DelegateUserVault>) -> Result<()> {
+    admin::delegate_user_vault::process(ctx)
+  }
+
   pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     deposit::process(ctx, amount)
   }
