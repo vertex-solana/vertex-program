@@ -31,8 +31,12 @@ pub mod vertex_program {
     deposit::process(ctx, amount)
   }
 
-  pub fn init_indexer(ctx: Context<InitIndexer>, indexer_id: u64) -> Result<()> {
-    init_indexer::process(ctx, indexer_id)
+  pub fn init_indexer(
+    ctx: Context<InitIndexer>,
+    indexer_id: u64,
+    price_per_gb_lamports: u64,
+  ) -> Result<()> {
+    init_indexer::process(ctx, indexer_id, price_per_gb_lamports)
   }
 
   pub fn transfer_read_fee(

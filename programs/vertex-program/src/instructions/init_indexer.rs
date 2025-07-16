@@ -1,27 +1,24 @@
 use {
   crate::{
     common::{
-      constant::{fee::TOKEN_FEE_KEY, seeds_prefix, DISCRIMINATOR},
-      error::VertexError,
+      constant::{seeds_prefix, DISCRIMINATOR},
       event::InitIndexerEvent,
     },
     states::Indexer,
   },
   anchor_lang::prelude::*,
-  anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-  },
 };
 
-pub fn process(ctx: Context<InitIndexer>, indexer_id: u64) -> Result<()> {
+pub fn process(
+  ctx: Context<InitIndexer>,
+  indexer_id: u64,
+  price_per_gb_lamports: u64,
+) -> Result<()> {
   let owner = &ctx.accounts.owner;
+  let bump = ctx.bumps.indexer;
 
-  ctx.accounts.indexer.set_inner(Indexer {
-    owner: owner.key(),
-    indexer_id,
-    balance: 0,
-  });
+  let indexer = &mut ctx.accounts.indexer;
+  indexer.init(indexer_id, price_per_gb_lamports, owner.key(), bump);
 
   emit!(InitIndexerEvent {
     owner: owner.key(),
@@ -33,7 +30,7 @@ pub fn process(ctx: Context<InitIndexer>, indexer_id: u64) -> Result<()> {
 }
 
 #[derive(Accounts)]
-#[instruction(indexer_id: u64)]
+#[instruction(indexer_id: u64, price_per_gb_lamports: u64)]
 pub struct InitIndexer<'info> {
   #[account(mut)]
   pub owner: Signer<'info>,
@@ -46,23 +43,6 @@ pub struct InitIndexer<'info> {
     bump
   )]
   pub indexer: Account<'info, Indexer>,
-
-  #[account(
-    constraint = mint.key() == TOKEN_FEE_KEY @ VertexError::WrongMintTokenFee
-  )]
-  pub mint: InterfaceAccount<'info, Mint>,
-
-  #[account(
-    init,
-    payer = owner,
-    associated_token::mint = mint,
-    associated_token::authority = indexer,
-  )]
-  pub indexer_vault: InterfaceAccount<'info, TokenAccount>,
-
-  pub token_program: Interface<'info, TokenInterface>,
-
-  pub associated_token_program: Program<'info, AssociatedToken>,
 
   pub system_program: Program<'info, System>,
 }
