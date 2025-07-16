@@ -5,6 +5,12 @@ pub enum VertexError {
   #[msg("Wrong user vault")]
   WrongUserVault,
 
+  #[msg("User vault already delegated")]
+  UserVaultHadDelegated,
+
+  #[msg("User not have enough amount to deposit")]
+  UserNotHaveEnoughAmountToDeposit,
+
   #[msg("Wrong mint token fee")]
   WrongMintTokenFee,
 

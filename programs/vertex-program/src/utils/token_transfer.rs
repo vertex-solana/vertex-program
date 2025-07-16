@@ -1,33 +1,28 @@
 use ::{
   anchor_lang::{
     prelude::{AccountInfo, CpiContext},
+    solana_program::{program::invoke_signed, system_instruction},
     Result,
   },
   anchor_spl::token_interface,
 };
 
-pub fn deposit_fee_to_vault<'a>(
+pub fn deposit_to_vault<'a>(
   source_deposit: AccountInfo<'a>,
   destination_deposit: AccountInfo<'a>,
-  user_authority: AccountInfo<'a>,
-  token_program: AccountInfo<'a>,
-  mint: AccountInfo<'a>,
-  mint_decimals: u8,
+  system_program: AccountInfo<'a>,
   amount: u64,
 ) -> Result<()> {
-  token_interface::transfer_checked(
-    CpiContext::new(
-      token_program.clone(),
-      token_interface::TransferChecked {
-        from: source_deposit,
-        to: destination_deposit,
-        authority: user_authority,
-        mint,
-      },
-    ),
-    amount,
-    mint_decimals,
-  )
+  let transfer_instruction =
+    system_instruction::transfer(&source_deposit.key, &destination_deposit.key, amount);
+
+  invoke_signed(
+    &transfer_instruction,
+    &[source_deposit, destination_deposit, system_program],
+    &[],
+  )?;
+
+  Ok(())
 }
 
 pub fn transfer_read_fee<'a>(
