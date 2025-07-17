@@ -7,6 +7,9 @@ pub use transfer_read_fee::*;
 pub mod init_system_vault;
 pub use init_system_vault::*;
 
+pub mod track_user_activity;
+pub use track_user_activity::*;
+
 pub mod charge_fee;
 pub use charge_fee::*;
 

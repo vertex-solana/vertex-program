@@ -39,6 +39,13 @@ pub mod vertex_program {
     init_indexer::process(ctx, indexer_id, price_per_gb_lamports)
   }
 
+  pub fn track_user_activity(
+    ctx: Context<TrackUserActivity>,
+    input: TrackUserActivityInput,
+  ) -> Result<()> {
+    admin::track_user_activity::process(ctx, input)
+  }
+
   pub fn transfer_read_fee(
     ctx: Context<TransferReadFee>,
     _indexer_id: u64,

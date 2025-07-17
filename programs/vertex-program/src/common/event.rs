@@ -24,6 +24,12 @@ pub struct DepositToVaultEvent {
 }
 
 #[event]
+pub struct TrackUserActivityEvent {
+  pub user: Pubkey,
+  pub user_vault: Pubkey,
+}
+
+#[event]
 pub struct InitIndexerEvent {
   pub owner: Pubkey,
   pub indexer: Pubkey,
