@@ -1,4 +1,11 @@
-use {crate::common::error::VertexError, anchor_lang::prelude::*};
+use {
+  crate::{
+    common::{constant::system::PRICE_PER_GB_STORAGE, error::VertexError},
+    utils::math::bytes_to_gb,
+  },
+  anchor_lang::prelude::*,
+  std::ops::{Add, Mul},
+};
 
 const MAX_READ_DEBT: usize = 5;
 const DEFAULT_INDEXER_ID: u64 = 0;
@@ -60,6 +67,21 @@ impl UserVault {
       msg!("User vault not have enough for read debt");
       err!(VertexError::ReadDebtLimit)
     }
+  }
+
+  pub fn calculate_total_price_user_vault(&self) -> Result<f64> {
+    let storage_fee = bytes_to_gb(self.storage_bytes).mul(PRICE_PER_GB_STORAGE as f64);
+    let mut read_fee = 0_f64;
+
+    for read_debt in self.read_debts.iter() {
+      if read_debt.indexer_id != DEFAULT_INDEXER_ID {
+        let fee =
+          bytes_to_gb(read_debt.bytes_accumulated).mul(read_debt.price_per_gb_lamports as f64);
+        read_fee = read_fee.add(fee);
+      }
+    }
+
+    Ok(storage_fee.add(read_fee))
   }
 }
 

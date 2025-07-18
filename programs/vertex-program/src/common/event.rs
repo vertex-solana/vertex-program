@@ -30,6 +30,12 @@ pub struct TrackUserActivityEvent {
 }
 
 #[event]
+pub struct StartBillingEvent {
+  pub user: Pubkey,
+  pub user_vault: Pubkey,
+}
+
+#[event]
 pub struct InitIndexerEvent {
   pub owner: Pubkey,
   pub indexer: Pubkey,

@@ -7,7 +7,7 @@ pub mod seeds_prefix {
 }
 
 pub mod system {
-  use anchor_lang::{prelude::Pubkey, pubkey};
+  use anchor_lang::{prelude::Pubkey, pubkey, solana_program::native_token::LAMPORTS_PER_SOL};
 
   // TODO: Update operator key
   #[cfg(feature = "mainnet")]
@@ -18,4 +18,8 @@ pub mod system {
 
   #[cfg(all(not(feature = "mainnet"), not(feature = "devnet")))]
   pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
+
+  pub const PRICE_PER_GB_STORAGE: u64 = LAMPORTS_PER_SOL;
+
+  pub const THRESHOLD_PRICE_LAMPORTS: u64 = 100_000_000; // 0.1 SOL
 }

@@ -26,6 +26,9 @@ pub enum VertexError {
   #[msg("Read debt limit")]
   ReadDebtLimit,
 
+  #[msg("User vault is in billing process")]
+  UserVaultIsInBillingProcess,
+
   #[msg("User not have enough amount to deposit")]
   UserNotHaveEnoughAmountToDeposit,
 

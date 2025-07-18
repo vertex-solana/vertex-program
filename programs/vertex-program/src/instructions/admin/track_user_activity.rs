@@ -1,12 +1,15 @@
 use {
   crate::{
     common::{
-      constant::{seeds_prefix, system::OPERATOR_KEY},
+      constant::{
+        seeds_prefix,
+        system::{OPERATOR_KEY, THRESHOLD_PRICE_LAMPORTS},
+      },
       error::VertexError,
-      event::TrackUserActivityEvent,
+      event::{StartBillingEvent, TrackUserActivityEvent},
     },
     program_id::PROGRAM_ID,
-    states::{user_vault, Indexer, UserVault},
+    states::{BillingStatus, Indexer, UserVault},
     utils::magic_block,
   },
   anchor_lang::prelude::*,
@@ -27,6 +30,10 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
 
   validate_user_vault(&user_vault_info, &user_vault, user)?;
 
+  if user_vault.billing_status.is_some() {
+    return err!(VertexError::UserVaultIsInBillingProcess);
+  }
+
   let TrackUserActivityInput { indexer_id, bytes } = input;
 
   let is_update_read_debt = indexer_id.is_some();
@@ -42,11 +49,22 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
     update_storage(&mut user_vault, bytes)?
   }
 
+  let user_vault_key = ctx.accounts.user_vault.key();
+
+  let total_price_debt = user_vault.calculate_total_price_user_vault()?;
+  if total_price_debt >= THRESHOLD_PRICE_LAMPORTS as f64 {
+    user_vault.billing_status = Some(BillingStatus::Pending);
+
+    emit!(StartBillingEvent {
+      user,
+      user_vault: user_vault_key,
+    })
+  }
   user_vault.serialize(&mut &mut ctx.accounts.user_vault.data.borrow_mut()[..])?;
 
   emit!(TrackUserActivityEvent {
     user,
-    user_vault: ctx.accounts.user_vault.key(),
+    user_vault: user_vault_key,
   });
 
   Ok(())
