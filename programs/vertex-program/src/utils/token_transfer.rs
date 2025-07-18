@@ -51,32 +51,6 @@ pub fn transfer_read_fee<'a>(
   )
 }
 
-pub fn withdraw_indexer_fee<'a>(
-  indexer_owner_ata: AccountInfo<'a>,
-  indexer: AccountInfo<'a>,
-  indexer_signer_seeds: &[&[&[u8]]],
-  indexer_vault: AccountInfo<'a>,
-  token_program: AccountInfo<'a>,
-  mint: AccountInfo<'a>,
-  mint_decimals: u8,
-  amount: u64,
-) -> Result<()> {
-  token_interface::transfer_checked(
-    CpiContext::new_with_signer(
-      token_program,
-      token_interface::TransferChecked {
-        from: indexer_vault,
-        to: indexer_owner_ata,
-        authority: indexer,
-        mint,
-      },
-      indexer_signer_seeds,
-    ),
-    amount,
-    mint_decimals,
-  )
-}
-
 pub fn charge_fee<'a>(
   payer_vault_authority: AccountInfo<'a>,
   payer_vault_ata: AccountInfo<'a>,

@@ -50,20 +50,12 @@ pub mod vertex_program {
     admin::commit_and_start_billing::process(ctx)
   }
 
-  pub fn transfer_read_fee(
-    ctx: Context<TransferReadFee>,
+  pub fn withdraw_indexer_fee(
+    ctx: Context<WithdrawIndexerFee>,
     _indexer_id: u64,
     amount: u64,
   ) -> Result<()> {
-    admin::transfer_read_fee::process(ctx, amount)
-  }
-
-  pub fn withdraw_indexer_fee(
-    ctx: Context<WithdrawIndexerFee>,
-    indexer_id: u64,
-    amount: u64,
-  ) -> Result<()> {
-    withdraw_indexer_fee::process(ctx, indexer_id, amount)
+    withdraw_indexer_fee::process(ctx, amount)
   }
 
   pub fn charge_fee(ctx: Context<ChargeFee>, amount: u64) -> Result<()> {

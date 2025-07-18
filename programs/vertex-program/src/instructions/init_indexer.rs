@@ -18,7 +18,14 @@ pub fn process(
   let bump = ctx.bumps.indexer;
 
   let indexer = &mut ctx.accounts.indexer;
-  indexer.init(indexer_id, price_per_gb_lamports, owner.key(), bump);
+  let rent_lamports = indexer.get_lamports();
+  indexer.init(
+    indexer_id,
+    price_per_gb_lamports,
+    owner.key(),
+    bump,
+    rent_lamports,
+  );
 
   emit!(InitIndexerEvent {
     owner: owner.key(),
