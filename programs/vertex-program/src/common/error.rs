@@ -29,6 +29,9 @@ pub enum VertexError {
   #[msg("User vault is in billing process")]
   UserVaultIsInBillingProcess,
 
+  #[msg("User vault not touch threshold")]
+  UserVaultNotTouchThreshold,
+
   #[msg("User not have enough amount to deposit")]
   UserNotHaveEnoughAmountToDeposit,
 

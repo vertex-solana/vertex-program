@@ -1,7 +1,11 @@
 use {
   crate::{
-    common::{constant::system::PRICE_PER_GB_STORAGE, error::VertexError},
-    utils::math::bytes_to_gb,
+    common::{
+      constant::{seeds_prefix, system::PRICE_PER_GB_STORAGE},
+      error::VertexError,
+    },
+    program_id::PROGRAM_ID,
+    utils::{magic_block, math::bytes_to_gb},
   },
   anchor_lang::prelude::*,
   std::ops::{Add, Mul},
@@ -93,4 +97,27 @@ impl ReadDebt {
       price_per_gb_lamports,
     }
   }
+}
+
+pub fn validate_user_vault_had_delegated(
+  user_vault_info: &AccountInfo,
+  user_vault: &UserVault,
+  user: Pubkey,
+) -> Result<()> {
+  if !user_vault_info.owner.eq(&user) {
+    return err!(VertexError::InvalidOwnerOfUserVault);
+  }
+
+  let user_vault_seeds = [seeds_prefix::USER_VAULT, user.as_ref()];
+  let (user_vault_pubkey, user_vault_bump) =
+    Pubkey::find_program_address(&user_vault_seeds, &PROGRAM_ID);
+  if !user_vault_pubkey.eq(&user_vault_info.key()) || user_vault_bump != user_vault.bump {
+    return err!(VertexError::WrongUserVault);
+  }
+
+  if !magic_block::is_pda_delegated(user_vault_info) {
+    return err!(VertexError::UserVaultMustDelegated);
+  }
+
+  Ok(())
 }

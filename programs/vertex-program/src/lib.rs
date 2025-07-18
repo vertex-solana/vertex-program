@@ -46,6 +46,10 @@ pub mod vertex_program {
     admin::track_user_activity::process(ctx, input)
   }
 
+  pub fn commit_and_start_billing(ctx: Context<CommitAndStartBilling>) -> Result<()> {
+    admin::commit_and_start_billing::process(ctx)
+  }
+
   pub fn transfer_read_fee(
     ctx: Context<TransferReadFee>,
     _indexer_id: u64,

@@ -36,6 +36,12 @@ pub struct StartBillingEvent {
 }
 
 #[event]
+pub struct CommitAndStartBillingEvent {
+  pub user: Pubkey,
+  pub user_vault: Pubkey,
+}
+
+#[event]
 pub struct InitIndexerEvent {
   pub owner: Pubkey,
   pub indexer: Pubkey,

@@ -1,16 +1,11 @@
 use {
   crate::{
     common::{
-      constant::{
-        seeds_prefix,
-        system::{OPERATOR_KEY, THRESHOLD_PRICE_LAMPORTS},
-      },
+      constant::system::{OPERATOR_KEY, THRESHOLD_PRICE_LAMPORTS},
       error::VertexError,
       event::{StartBillingEvent, TrackUserActivityEvent},
     },
-    program_id::PROGRAM_ID,
-    states::{BillingStatus, Indexer, UserVault},
-    utils::magic_block,
+    states::{validate_user_vault_had_delegated, BillingStatus, Indexer, UserVault},
   },
   anchor_lang::prelude::*,
 };
@@ -28,7 +23,7 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
   let mut user_vault_buffer = user_vault_buffer_vec.as_slice();
   let mut user_vault = UserVault::deserialize(&mut user_vault_buffer)?;
 
-  validate_user_vault(&user_vault_info, &user_vault, user)?;
+  validate_user_vault_had_delegated(&user_vault_info, &user_vault, user)?;
 
   if user_vault.billing_status.is_some() {
     return err!(VertexError::UserVaultIsInBillingProcess);
@@ -66,29 +61,6 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
     user,
     user_vault: user_vault_key,
   });
-
-  Ok(())
-}
-
-fn validate_user_vault(
-  user_vault_info: &AccountInfo,
-  user_vault: &UserVault,
-  user: Pubkey,
-) -> Result<()> {
-  if !user_vault_info.owner.eq(&user) {
-    return err!(VertexError::InvalidOwnerOfUserVault);
-  }
-
-  let user_vault_seeds = [seeds_prefix::USER_VAULT, user.as_ref()];
-  let (user_vault_pubkey, user_vault_bump) =
-    Pubkey::find_program_address(&user_vault_seeds, &PROGRAM_ID);
-  if !user_vault_pubkey.eq(&user_vault_info.key()) || user_vault_bump != user_vault.bump {
-    return err!(VertexError::WrongUserVault);
-  }
-
-  if !magic_block::is_pda_delegated(user_vault_info) {
-    return err!(VertexError::UserVaultMustDelegated);
-  }
 
   Ok(())
 }
