@@ -12,8 +12,8 @@ pub fn process(ctx: Context<WithdrawIndexerFee>, amount: u64) -> Result<()> {
     return err!(VertexError::InsufficientFundsInIndexerVault);
   }
 
-  ctx.accounts.indexer.sub_lamports(amount);
-  ctx.accounts.owner.add_lamports(amount);
+  ctx.accounts.indexer.sub_lamports(amount)?;
+  ctx.accounts.owner.add_lamports(amount)?;
 
   emit!(WithdrawIndexerFeeEvent {
     amount,

@@ -49,15 +49,6 @@ pub struct InitIndexerEvent {
 }
 
 #[event]
-pub struct TransferReadFeeEvent {
-  pub indexer: Pubkey,
-  pub indexer_owner: Pubkey,
-  pub indexer_id: u64,
-  pub amount: u64,
-  pub payer: Pubkey,
-}
-
-#[event]
 pub struct WithdrawIndexerFeeEvent {
   pub indexer: Pubkey,
   pub indexer_owner: Pubkey,
@@ -68,6 +59,7 @@ pub struct WithdrawIndexerFeeEvent {
 #[event]
 pub struct ChargeFeeEvent {
   pub user: Pubkey,
+  pub user_vault: Pubkey,
   pub amount: u64,
 }
 

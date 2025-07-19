@@ -58,8 +58,8 @@ pub mod vertex_program {
     withdraw_indexer_fee::process(ctx, amount)
   }
 
-  pub fn charge_fee(ctx: Context<ChargeFee>, amount: u64) -> Result<()> {
-    admin::charge_fee::process(ctx, amount)
+  pub fn charge_fee<'info>(ctx: Context<'_, '_, 'info, 'info, ChargeFee<'info>>) -> Result<()> {
+    admin::charge_fee::process(ctx)
   }
 
   pub fn withdraw_fee(ctx: Context<WithdrawFee>, amount: u64) -> Result<()> {

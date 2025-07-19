@@ -12,14 +12,13 @@ use {
 };
 
 const MAX_READ_DEBT: usize = 5;
-const DEFAULT_INDEXER_ID: u64 = 0;
+pub const DEFAULT_INDEXER_ID: u64 = 0;
 const DEFAULT_PRICE_PER_GB_LAMPORTS: u64 = 0;
 
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Debug, Clone)]
 pub enum BillingStatus {
   Pending = 0,
   Charged = 1,
-  Failed = 2,
 }
 
 #[account]
@@ -28,7 +27,7 @@ pub struct UserVault {
   pub owner: Pubkey,
   pub bump: u8,
   pub storage_bytes: u64,
-  pub storage_last_billed_slot: u64,
+  pub storage_bytes_last_billed: u64,
   pub read_debts: [ReadDebt; MAX_READ_DEBT],
   pub billing_status: Option<BillingStatus>,
   pub rent_lamports: u64,
@@ -46,7 +45,7 @@ impl UserVault {
     self.owner = owner;
     self.bump = bump;
     self.storage_bytes = 0;
-    self.storage_last_billed_slot = u64::try_from(Clock::get().unwrap().slot).unwrap();
+    self.storage_bytes_last_billed = 0;
     self.read_debts = [ReadDebt::default(); MAX_READ_DEBT];
     self.billing_status = None;
     self.rent_lamports = rent_lamports;
@@ -74,7 +73,8 @@ impl UserVault {
   }
 
   pub fn calculate_total_price_user_vault(&self) -> Result<f64> {
-    let storage_fee = bytes_to_gb(self.storage_bytes).mul(PRICE_PER_GB_STORAGE as f64);
+    let storage_fee = bytes_to_gb(self.storage_bytes - self.storage_bytes_last_billed)
+      .mul(PRICE_PER_GB_STORAGE as f64);
     let mut read_fee = 0_f64;
 
     for read_debt in self.read_debts.iter() {
@@ -86,6 +86,27 @@ impl UserVault {
     }
 
     Ok(storage_fee.add(read_fee))
+  }
+
+  pub fn total_read_debts(&self) -> u64 {
+    self
+      .read_debts
+      .iter()
+      .filter(|debt| debt.indexer_id != DEFAULT_INDEXER_ID)
+      .count() as u64
+  }
+
+  pub fn get_all_read_debts_active(&self) -> Vec<ReadDebt> {
+    self
+      .read_debts
+      .iter()
+      .filter(|debt| debt.indexer_id != DEFAULT_INDEXER_ID)
+      .cloned()
+      .collect()
+  }
+
+  pub fn refresh_read_debts(&mut self) {
+    self.read_debts = [ReadDebt::default(); MAX_READ_DEBT];
   }
 }
 

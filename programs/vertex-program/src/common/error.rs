@@ -20,6 +20,9 @@ pub enum VertexError {
   #[msg("Require indexer")]
   RequireIndexer,
 
+  #[msg("Invalid indexer")]
+  InvalidIndexer,
+
   #[msg("Overflow")]
   Overflow,
 
@@ -44,8 +47,11 @@ pub enum VertexError {
   #[msg("Invalid operator")]
   InvalidOperator,
 
-  #[msg("Not enough remaining amount")]
-  NotEnoughRemainingAmount,
+  #[msg("Insufficient funds in user vault for charge fee")]
+  InsufficientFundsInUserVaultForChargeFee,
+
+  #[msg("Not enough remaining account read debt")]
+  NotEnoughRemainingAccountReadDebt,
 
   #[msg("Insufficient funds in indexer vault")]
   InsufficientFundsInIndexerVault,
