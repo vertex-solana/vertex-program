@@ -15,7 +15,7 @@ const MAX_READ_DEBT: usize = 5;
 pub const DEFAULT_INDEXER_ID: u64 = 0;
 const DEFAULT_PRICE_PER_GB_LAMPORTS: u64 = 0;
 
-#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Debug, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BillingStatus {
   Pending = 0,
   Charged = 1,
