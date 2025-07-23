@@ -24,7 +24,7 @@ import {
   TOKEN_PROGRAM_ID,
   transfer,
 } from "@solana/spl-token";
-import { log, seeds } from "./utils";
+import { log, seeds } from "../sdk/utils";
 import { assert } from "chai";
 import {
   chargeFeeIx,
@@ -32,8 +32,8 @@ import {
   initIndexerIx,
   initSystemVaultIx,
   transferReadFeeIx,
-} from "./instructions";
-import { initUserVaultIx } from "./instructions/init-user-vault.instruction";
+} from "../sdk/instructions";
+import { initUserVaultIx } from "../sdk/instructions/init-user-vault.instruction";
 
 describe("vertex-program", () => {
   // Configure the client to use the local cluster.
