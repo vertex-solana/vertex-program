@@ -19,7 +19,7 @@ pub struct TrackUserActivityInput {
 pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -> Result<()> {
   let user = ctx.accounts.user.key();
   let user_vault_info = ctx.accounts.user_vault.to_account_info();
-  let user_vault_buffer_vec = ctx.accounts.user_vault.try_borrow_data().unwrap().to_vec();
+  let user_vault_buffer_vec = ctx.accounts.user_vault.try_borrow_data()?.to_vec();
   let mut user_vault_buffer = user_vault_buffer_vec.as_slice();
   let mut user_vault = UserVault::deserialize(&mut user_vault_buffer)?;
 
@@ -72,7 +72,7 @@ fn update_read_debt(
   bytes: u64,
 ) -> Result<()> {
   let read_debt = user_vault.find_or_add_read_debt(indexer_id)?;
-  read_debt
+  read_debt.bytes_accumulated = read_debt
     .bytes_accumulated
     .checked_add(bytes)
     .ok_or(VertexError::Overflow)?;

@@ -15,6 +15,7 @@ pub fn process(ctx: Context<InitUserVault>) -> Result<()> {
 
   let user_vault = &mut ctx.accounts.user_vault;
   let rent_lamports = user_vault.get_lamports();
+  msg!("rent_lamports: {}", rent_lamports);
   user_vault.init(owner, user_vault_bump, rent_lamports);
 
   emit!(InitUserVaultEvent {

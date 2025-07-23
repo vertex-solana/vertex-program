@@ -17,7 +17,7 @@ pub fn process(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     return err!(VertexError::UserVaultHadDelegated);
   }
 
-  if user_vault.get_lamports() < amount {
+  if ctx.accounts.payer.lamports() < amount {
     return err!(VertexError::UserNotHaveEnoughAmountToDeposit);
   }
 

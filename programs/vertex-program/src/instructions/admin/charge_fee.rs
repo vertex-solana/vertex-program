@@ -36,23 +36,21 @@ pub fn process<'info>(ctx: Context<'_, '_, 'info, 'info, ChargeFee<'info>>) -> R
 
   let mut total_amount_transfer: u64 = 0;
 
-  let mut indexer_remaining_accounts = ctx
+  let indexer_accounts: Vec<Account<'info, Indexer>> = ctx
     .remaining_accounts
     .iter()
     .take(total_read_debts as usize)
-    .map(
-      |account_info: &AccountInfo| -> Result<Account<'info, Indexer>> {
-        let indexer = Account::<Indexer>::try_from(account_info)
-          .map_err(|_| VertexError::InvalidAccountData)?;
+    .map(|account_info| {
+      let indexer =
+        Account::<Indexer>::try_from(account_info).map_err(|_| VertexError::InvalidAccountData)?;
+      if indexer.indexer_id == DEFAULT_INDEXER_ID {
+        return err!(VertexError::InvalidIndexer);
+      }
+      Ok(indexer)
+    })
+    .collect::<Result<Vec<_>>>()?;
 
-        if indexer.indexer_id == DEFAULT_INDEXER_ID {
-          return err!(VertexError::InvalidIndexer);
-        }
-
-        Ok(indexer)
-      },
-    )
-    .map(|indexer_account| indexer_account.unwrap());
+  let mut indexer_remaining_accounts = indexer_accounts.into_iter();
 
   for (index, read_debt) in read_debts.iter().enumerate() {
     let indexer_account: Account<'info, Indexer> = indexer_remaining_accounts

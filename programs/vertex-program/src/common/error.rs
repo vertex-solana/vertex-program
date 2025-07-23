@@ -58,4 +58,7 @@ pub enum VertexError {
 
   #[msg("Insufficient funds in system vault")]
   InsufficientFundsInSystemVault,
+
+  #[msg("Invalid indexer price for read")]
+  InvalidIndexerPriceForRead,
 }
