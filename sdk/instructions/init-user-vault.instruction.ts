@@ -1,5 +1,4 @@
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import * as anchor from "@coral-xyz/anchor";
+import { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { getProgram } from "../utils/program";
 
 interface InitUserVaultAccounts {
@@ -16,7 +15,7 @@ interface InitUserVaultPayload {
 }
 
 export const initUserVaultIx = async (
-  connection: anchor.web3.Connection,
+  connection: Connection,
   payload: InitUserVaultPayload
 ): Promise<TransactionInstruction> => {
   const { accounts } = payload;

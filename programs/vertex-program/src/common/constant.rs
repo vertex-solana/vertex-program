@@ -14,7 +14,7 @@ pub mod system {
   pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
 
   #[cfg(feature = "devnet")]
-  pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
+  pub const OPERATOR_KEY: Pubkey = pubkey!("HE2eEi4Q74oH4x1V6BwwD5WwdQki15KRNmDpAF4Ez1mN");
 
   #[cfg(all(not(feature = "mainnet"), not(feature = "devnet")))]
   pub const OPERATOR_KEY: Pubkey = pubkey!("2RFnSTt2tBApn6xHGZPr6ijSd1nsVCUU273gWWs3f4Rg");
