@@ -1,6 +1,5 @@
 {
   "license": "ISC",
-  "type": "module",
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
@@ -13,9 +12,11 @@
     "@solana/web3.js": "1.98.0",
     "@types/lodash": "^4.17.20",
     "bs58": "^6.0.0",
+    "dotenv": "^17.2.1",
     "husky": "^9.1.7",
     "lodash": "^4.17.21",
-    "magic-router-sdk": "^1.0.8"
+    "magic-router-sdk": "^1.0.8",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",

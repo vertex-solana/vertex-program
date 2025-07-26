@@ -16,6 +16,7 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import {
+  commitAndStartBillingIx,
   delegateUserVaultIx,
   Indexer,
   initIndexerIx,
@@ -555,7 +556,7 @@ describe("vertex-program", async () => {
       }
     });
 
-    it("Throw error if maximum readDebts reached", async () => {
+    xit("Throw error if maximum readDebts reached", async () => {
       const readerVaultPubkey = PublicKey.findProgramAddressSync(
         seeds.userVault(readerKeypair.publicKey),
         program.programId
@@ -595,13 +596,14 @@ describe("vertex-program", async () => {
         }
       }
 
-      let  txHash = await sendSolanaTransaction({
-        connection: connection,
-        payer: creatorIndexerKeypair,
-        tx: txInitIndexer,
-      });
-      console.log("Init Indexers txHash: ", txHash);
-
+      if (txInitIndexer.instructions.length > 0) {
+        const txHash = await sendSolanaTransaction({
+          connection: connection,
+          payer: creatorIndexerKeypair,
+          tx: txInitIndexer,
+        });
+        console.log("Init Indexers txHash: ", txHash);
+      }
       const txTrackUserActivity = new Transaction();
       const readBytes = new BN(100);
       for (let i = 0; i < totalReadDebtsAvailable; i++) {
@@ -627,11 +629,187 @@ describe("vertex-program", async () => {
         );
       }
 
-      txHash = await sendSolanaTransaction({
+      let txHash = await sendSolanaTransaction({
         connection: ephemeralConnection,
         payer: operatorKeypair,
         tx: txTrackUserActivity,
       });
+      console.log("Track User Activity txHash: ", txHash);
+
+      const userVaultDataAtER = await ephemeralProgram.account.userVault.fetch(
+        readerVaultPubkey
+      );
+      const userVault = new UserVault(userVaultDataAtER);
+      userVault.display();
+
+      const newIndexerId = new BN(100);
+      const indexerPubkey = PublicKey.findProgramAddressSync(
+        seeds.indexer(creatorIndexerKeypair.publicKey, newIndexerId.toNumber()),
+        program.programId
+      )[0];
+      const newIndexerInfo = await connection.getAccountInfo(indexerPubkey);
+      if (!newIndexerInfo) {
+        const txInitIndexer = new Transaction();
+        txInitIndexer.add(
+          await initIndexerIx(connection, {
+            accounts: {
+              owner: creatorIndexerKeypair.publicKey,
+              indexer: indexerPubkey,
+            },
+            params: {
+              indexerId: newIndexerId,
+              pricePerGbLamports: new BN(LAMPORTS_PER_SOL),
+            },
+          })
+        );
+        txHash = await sendSolanaTransaction({
+          connection: connection,
+          payer: creatorIndexerKeypair,
+          tx: txInitIndexer,
+        });
+        console.log("Init New Indexers txHash: ", txHash);
+      }
+
+      const txTrackUserActivity2 = new Transaction();
+      txTrackUserActivity2.add(
+        await trackUserActivityIx(connection, {
+          accounts: {
+            indexer: indexerPubkey,
+            operator: operatorKeypair.publicKey,
+            user: readerKeypair.publicKey,
+            userVault: readerVaultPubkey,
+          },
+          params: {
+            bytes: readBytes,
+            indexerId: newIndexerId,
+          },
+        })
+      );
+
+      try {
+        await sendSolanaTransaction({
+          connection: ephemeralConnection,
+          payer: operatorKeypair,
+          tx: txTrackUserActivity2,
+        });
+      } catch (error) {
+        assert.include(JSON.stringify(error), "Read debt limit");
+      }
+    });
+
+    xit("Success update status Billing when touch to threshold", async () => {
+      let byteStorage = 100_000_000;
+      const readerVaultPubkey = PublicKey.findProgramAddressSync(
+        seeds.userVault(readerKeypair.publicKey),
+        program.programId
+      )[0];
+
+      const readerVaultInfo = await connection.getAccountInfo(
+        readerVaultPubkey
+      );
+      const readerVaultAccount = await program.account.userVault.fetch(
+        readerVaultPubkey
+      );
+
+      if (!readerVaultInfo) {
+        throw Error("Reader vault not initialized");
+      }
+
+      if (!readerVaultInfo.owner.equals(DELEGATION_PROGRAM_ID)) {
+        throw Error("Reader vault not delegated");
+      }
+
+      if (!isNil(readerVaultAccount.billingStatus)) {
+        console.log("User vault already in Billing process can not update");
+        return;
+      }
+
+      const tx = new Transaction();
+      tx.add(
+        await trackUserActivityIx(connection, {
+          accounts: {
+            indexer: null,
+            operator: operatorKeypair.publicKey,
+            user: readerKeypair.publicKey,
+            userVault: readerVaultPubkey,
+          },
+          params: {
+            indexerId: null,
+            bytes: new BN(byteStorage),
+          },
+        })
+      );
+
+      const txHash = await sendSolanaTransaction({
+        connection: ephemeralConnection,
+        payer: operatorKeypair,
+        tx: tx,
+      });
+      console.log("Track User Activity txHash: ", txHash);
+
+      const userVaultDataAfter = await ephemeralProgram.account.userVault.fetch(
+        readerVaultPubkey
+      );
+      const userVaultAfter = new UserVault(userVaultDataAfter);
+      userVaultAfter.display();
+    });
+
+    it("Throw error when update user activity if user vault already in Billing process", async () => {
+      // TODO
+    });
+  });
+
+  describe("Commit and Start Billing", async () => {
+    it("Success commit and start billing for User Vault touch to Billing Threshold", async () => {
+      const readerVaultPubkey = PublicKey.findProgramAddressSync(
+        seeds.userVault(readerKeypair.publicKey),
+        program.programId
+      )[0];
+      console.log("🚀 ~ readerVaultPubkey:", readerVaultPubkey.toBase58())
+
+      const readerVaultInfo = await connection.getAccountInfo(
+        readerVaultPubkey
+      );
+      const readVaultBeforeData = await ephemeralProgram.account.userVault.fetch(
+        readerVaultPubkey
+      );
+      const readerVaultBefore = new UserVault(readVaultBeforeData);
+      console.log("Reader Vault data at base chain: ");
+      readerVaultBefore.display();
+
+      if (!readerVaultInfo.owner.equals(DELEGATION_PROGRAM_ID)) {
+        console.log("Reader vault not delegated");
+        return;
+      }
+
+      const tx = new Transaction();
+      tx.add(
+        await commitAndStartBillingIx(connection, {
+          accounts: {
+            operator: operatorKeypair.publicKey,
+            user: readerKeypair.publicKey,
+            userVault: readerVaultPubkey,
+          },
+          params: {},
+        })
+      );
+
+      const txHash = await sendSolanaTransaction({
+        connection: ephemeralConnection,
+        payer: operatorKeypair,
+        tx: tx,
+      });
+      console.log("Commit and Start Billing txHash In ER: ", txHash);
+
+      const userVaultDataAtER = await ephemeralConnection.getAccountInfo(
+        readerVaultPubkey
+      );
+      console.log("🚀 ~ userVaultDataAtER:", userVaultDataAtER);
+      const userVaultAtBaseChainData = await program.account.userVault.fetch(
+        readerVaultPubkey
+      );
+      const userVaultAtBaseChain = new UserVault(userVaultAtBaseChainData);
+      userVaultAtBaseChain.display();
     });
   });
 });

@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use {anchor_lang::prelude::*, ephemeral_rollups_sdk::anchor::ephemeral};
 
 mod program_id;
 use program_id::PROGRAM_ID;
@@ -11,6 +11,7 @@ mod utils;
 
 declare_id!(PROGRAM_ID);
 
+#[ephemeral]
 #[program]
 pub mod vertex_program {
   use super::*;
