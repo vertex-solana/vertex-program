@@ -1,10 +1,11 @@
-import * as anchor from "@coral-xyz/anchor";
 import {
+  Connection,
   PublicKey,
   SystemProgram,
   TransactionInstruction,
 } from "@solana/web3.js";
 import { getProgram } from "../utils/program";
+import BN from "bn.js";
 
 interface InitIndexerAccounts {
   owner: PublicKey;
@@ -12,8 +13,8 @@ interface InitIndexerAccounts {
 }
 
 interface InitIndexerParams {
-  indexerId: anchor.BN;
-  pricePerGbLamports: anchor.BN;
+  indexerId: BN;
+  pricePerGbLamports: BN;
 }
 
 interface InitIndexerPayload {
@@ -22,7 +23,7 @@ interface InitIndexerPayload {
 }
 
 export const initIndexerIx = async (
-  connection: anchor.web3.Connection,
+  connection: Connection,
   payload: InitIndexerPayload
 ): Promise<TransactionInstruction> => {
   const { accounts, params } = payload;

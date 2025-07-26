@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
 import {
+  Connection,
   PublicKey,
   SystemProgram,
   TransactionInstruction,
@@ -26,7 +26,7 @@ interface DelegateUserVaultPayload {
 }
 
 export const delegateUserVaultIx = async (
-  connection: anchor.web3.Connection,
+  connection: Connection,
   payload: DelegateUserVaultPayload
 ): Promise<TransactionInstruction> => {
   const { accounts } = payload;

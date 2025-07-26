@@ -14,7 +14,8 @@
     "@types/lodash": "^4.17.20",
     "bs58": "^6.0.0",
     "husky": "^9.1.7",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "magic-router-sdk": "^1.0.8"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",

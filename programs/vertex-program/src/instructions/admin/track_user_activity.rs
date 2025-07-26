@@ -1,11 +1,14 @@
 use {
   crate::{
     common::{
-      constant::system::{OPERATOR_KEY, THRESHOLD_PRICE_LAMPORTS},
+      constant::{
+        seeds_prefix,
+        system::{OPERATOR_KEY, THRESHOLD_PRICE_LAMPORTS},
+      },
       error::VertexError,
       event::{StartBillingEvent, TrackUserActivityEvent},
     },
-    states::{validate_user_vault_had_delegated, BillingStatus, Indexer, UserVault},
+    states::{BillingStatus, Indexer, UserVault},
   },
   anchor_lang::prelude::*,
 };
@@ -18,12 +21,7 @@ pub struct TrackUserActivityInput {
 
 pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -> Result<()> {
   let user = ctx.accounts.user.key();
-  let user_vault_info = ctx.accounts.user_vault.to_account_info();
-  let user_vault_buffer_vec = ctx.accounts.user_vault.try_borrow_data()?.to_vec();
-  let mut user_vault_buffer = user_vault_buffer_vec.as_slice();
-  let mut user_vault = UserVault::deserialize(&mut user_vault_buffer)?;
-
-  validate_user_vault_had_delegated(&user_vault_info, &user_vault, user)?;
+  let user_vault = &mut ctx.accounts.user_vault;
 
   if user_vault.billing_status.is_some() {
     return err!(VertexError::UserVaultIsInBillingProcess);
@@ -39,12 +37,10 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
 
     let indexer = ctx.accounts.indexer.as_ref().unwrap();
 
-    update_read_debt(&mut user_vault, indexer, indexer_id.unwrap(), bytes)?
+    update_read_debt(user_vault, indexer, indexer_id.unwrap(), bytes)?
   } else {
-    update_storage(&mut user_vault, bytes)?
+    update_storage(user_vault, bytes)?
   }
-
-  let user_vault_key = ctx.accounts.user_vault.key();
 
   let total_price_debt = user_vault.calculate_total_price_user_vault()?;
   if total_price_debt >= THRESHOLD_PRICE_LAMPORTS as f64 {
@@ -52,14 +48,13 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
 
     emit!(StartBillingEvent {
       user,
-      user_vault: user_vault_key,
+      user_vault: user_vault.key(),
     })
   }
-  user_vault.serialize(&mut &mut ctx.accounts.user_vault.data.borrow_mut()[..])?;
 
   emit!(TrackUserActivityEvent {
     user,
-    user_vault: user_vault_key,
+    user_vault: user_vault.key(),
   });
 
   Ok(())
@@ -83,7 +78,7 @@ fn update_read_debt(
 }
 
 fn update_storage(user_vault: &mut UserVault, bytes: u64) -> Result<()> {
-  user_vault
+  user_vault.storage_bytes = user_vault
     .storage_bytes
     .checked_add(bytes)
     .ok_or(VertexError::Overflow)?;
@@ -101,9 +96,12 @@ pub struct TrackUserActivity<'info> {
 
   pub user: SystemAccount<'info>,
 
-  #[account(mut)]
-  /// CHECK: user_vault has delegated, check by manual parse data
-  pub user_vault: AccountInfo<'info>,
+  #[account(
+    mut,
+    seeds = [seeds_prefix::USER_VAULT, user.key().as_ref()],
+    bump,
+  )]
+  pub user_vault: Account<'info, UserVault>,
 
   pub indexer: Option<Account<'info, Indexer>>,
 }

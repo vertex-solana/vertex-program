@@ -1,6 +1,6 @@
-import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { getProgram } from "../../utils/program";
+import BN from "bn.js";
 
 interface TrackUserActivityAccounts {
   operator: PublicKey;
@@ -10,8 +10,8 @@ interface TrackUserActivityAccounts {
 }
 
 interface TrackUserActivityParams {
-  indexerId: anchor.BN | null;
-  bytes: anchor.BN;
+  indexerId: BN | null;
+  bytes: BN;
 }
 
 interface TrackUserActivityPayload {
@@ -20,7 +20,7 @@ interface TrackUserActivityPayload {
 }
 
 export const trackUserActivityIx = async (
-  connection: anchor.web3.Connection,
+  connection: Connection,
   payload: TrackUserActivityPayload
 ): Promise<TransactionInstruction> => {
   const { accounts, params } = payload;
