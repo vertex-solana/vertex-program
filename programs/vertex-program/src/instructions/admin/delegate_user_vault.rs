@@ -5,7 +5,7 @@ use {
       error::VertexError,
       event::DelegateUserVaultEvent,
     },
-    states::{BillingStatus, UserVault},
+    states::UserVault,
   },
   anchor_lang::prelude::*,
   ephemeral_rollups_sdk::{anchor::delegate, cpi::DelegateConfig},
@@ -14,12 +14,11 @@ use {
 pub fn process(ctx: Context<DelegateUserVault>) -> Result<()> {
   let user_vault = &ctx.accounts.user_vault;
 
-  if user_vault
-    .billing_status
-    .is_some_and(|status| status == BillingStatus::Pending)
-  {
+  if user_vault.is_in_billing_process() {
     return err!(VertexError::UserVaultIsInBillingProcess);
   }
+
+  ctx.accounts.user_vault.billing_status = None;
 
   ctx.accounts.delegate_user_vault(
     &ctx.accounts.operator,

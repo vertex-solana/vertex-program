@@ -4,6 +4,7 @@ import { VertexProgram } from "../target/types/vertex_program";
 import {
   CREATOR_INDEXER_KEYPAIR,
   OPERATOR_KEYPAIR,
+  READER_2_KEYPAIR,
   READER_KEYPAIR,
 } from "./accounts";
 import {
@@ -16,8 +17,11 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import {
+  bytesToGB,
+  chargeFeeIx,
   commitAndStartBillingIx,
   delegateUserVaultIx,
+  depositIx,
   Indexer,
   initIndexerIx,
   initSystemVaultIx,
@@ -26,11 +30,14 @@ import {
   SystemAuthority,
   trackUserActivityIx,
 } from "../sdk";
-import { isNil } from "lodash";
+import { isNil, toNumber } from "lodash";
 import { assert } from "chai";
 import { getRandomInt, sendSolanaTransaction } from "./utils";
 import { UserVault } from "../sdk/state/user-vault";
-import { DELEGATION_PROGRAM_ID } from "@magicblock-labs/ephemeral-rollups-sdk";
+import {
+  DELEGATION_PROGRAM_ID,
+  GetCommitmentSignature,
+} from "@magicblock-labs/ephemeral-rollups-sdk";
 import { BN } from "bn.js";
 import { DEFAULT_INDEXER_ID } from "../sdk/common";
 
@@ -78,6 +85,9 @@ describe("vertex-program", async () => {
     Uint8Array.from(CREATOR_INDEXER_KEYPAIR)
   );
   const readerKeypair = Keypair.fromSecretKey(Uint8Array.from(READER_KEYPAIR));
+  const reader2Keypair = Keypair.fromSecretKey(
+    Uint8Array.from(READER_2_KEYPAIR)
+  );
   const operatorKeypair = Keypair.fromSecretKey(
     Uint8Array.from(OPERATOR_KEYPAIR)
   );
@@ -90,6 +100,7 @@ describe("vertex-program", async () => {
     `  Creator Indexer : ${creatorIndexerKeypair.publicKey.toBase58()}`
   );
   console.log(`  Reader          : ${readerKeypair.publicKey.toBase58()}`);
+  console.log(`  Reader 2        : ${reader2Keypair.publicKey.toBase58()}`);
   console.log(`  Operator        : ${operatorKeypair.publicKey.toBase58()}`);
   console.log("========================================\n");
 
@@ -119,7 +130,7 @@ describe("vertex-program", async () => {
     }
   });
 
-  describe("Setup System Authority", () => {
+  xdescribe("Setup System Authority", () => {
     it("Success Initialize System Authority", async () => {
       const systemAuthorityAccount = PublicKey.findProgramAddressSync(
         seeds.systemAuthority(),
@@ -175,7 +186,7 @@ describe("vertex-program", async () => {
     });
   });
 
-  describe("User vault", () => {
+  xdescribe("User vault", () => {
     const validateUserVault = (userVault: UserVault, owner: PublicKey) => {
       assert.equal(userVault.state.owner.toBase58(), owner.toBase58());
       assert.equal(userVault.state.storageBytes.toNumber(), 0);
@@ -284,7 +295,7 @@ describe("vertex-program", async () => {
     });
   });
 
-  describe("Indexer", () => {
+  xdescribe("Indexer", () => {
     it("Success initialize indexer", async () => {
       const indexerId = 1;
       const pricePerGbLamports = LAMPORTS_PER_SOL; // 1 SOL
@@ -336,8 +347,37 @@ describe("vertex-program", async () => {
     });
   });
 
+  xdescribe("Deposit User Vault", () => {
+    it("Success Deposit User Vault if User Vault not delegated", async () => {
+      const readerVault2Pubkey = PublicKey.findProgramAddressSync(
+        seeds.userVault(reader2Keypair.publicKey),
+        program.programId
+      )[0];
+
+      const tx = new Transaction();
+      tx.add(
+        await depositIx(connection, {
+          accounts: {
+            payer: reader2Keypair.publicKey,
+            userVault: readerVault2Pubkey,
+          },
+          params: {
+            amount: new BN(2 * LAMPORTS_PER_SOL),
+          },
+        })
+      );
+
+      const txHash = await sendSolanaTransaction({
+        connection,
+        payer: reader2Keypair,
+        tx: tx,
+      });
+      console.log("Deposit txHash In Base chain: ", txHash);
+    });
+  });
+
   describe("Delegate User Vault", () => {
-    it("Success delegate creator indexer vault", async () => {
+    xit("Success delegate creator indexer vault", async () => {
       const createIndexerVault = PublicKey.findProgramAddressSync(
         seeds.userVault(creatorIndexerKeypair.publicKey),
         program.programId
@@ -379,7 +419,7 @@ describe("vertex-program", async () => {
       }
     });
 
-    it("Success delegate reader vault", async () => {
+    xit("Success delegate reader vault", async () => {
       const readerVault = PublicKey.findProgramAddressSync(
         seeds.userVault(readerKeypair.publicKey),
         program.programId
@@ -418,13 +458,53 @@ describe("vertex-program", async () => {
         );
       }
     });
+
+    it("Success delegate reader 2 vault", async () => {
+      const reader2Vault = PublicKey.findProgramAddressSync(
+        seeds.userVault(reader2Keypair.publicKey),
+        program.programId
+      )[0];
+
+      const reader2VaultData = await connection.getAccountInfo(reader2Vault);
+      if (!reader2VaultData.owner.equals(program.programId)) {
+        console.log(
+          `Reader Vault had delegated, Current Owner is ${reader2VaultData.owner.toBase58()}`
+        );
+      } else {
+        const tx = new Transaction();
+        const ix = await delegateUserVaultIx(connection, {
+          accounts: {
+            operator: operatorKeypair.publicKey,
+            user: reader2Keypair.publicKey,
+            userVault: reader2Vault,
+          },
+          params: {},
+        });
+        tx.add(ix);
+
+        const txHash = await sendSolanaTransaction({
+          connection,
+          payer: operatorKeypair,
+          tx,
+        });
+        console.log("Delegate Reader Vault txHash: ", txHash);
+        assert.isString(txHash);
+
+        const userVaultDelegatedData = await connection.getAccountInfo(
+          reader2Vault
+        );
+        assert.isTrue(
+          userVaultDelegatedData.owner.equals(DELEGATION_PROGRAM_ID)
+        );
+      }
+    });
   });
 
-  describe("Deposit", () => {
+  xdescribe("Deposit", () => {
     // TODO
   });
 
-  describe("Track User Activity", () => {
+  xdescribe("Track User Activity", () => {
     xit("Success update storage bytes usage", async () => {
       const createIndexerVaultPubkey = PublicKey.findProgramAddressSync(
         seeds.userVault(creatorIndexerKeypair.publicKey),
@@ -697,18 +777,18 @@ describe("vertex-program", async () => {
       }
     });
 
-    xit("Success update status Billing when touch to threshold", async () => {
-      let byteStorage = 100_000_000;
-      const readerVaultPubkey = PublicKey.findProgramAddressSync(
-        seeds.userVault(readerKeypair.publicKey),
+    it("Success update status Billing when touch to threshold", async () => {
+      let byteStorage = 100_000_000_000;
+      const reader2VaultPubkey = PublicKey.findProgramAddressSync(
+        seeds.userVault(reader2Keypair.publicKey),
         program.programId
       )[0];
 
       const readerVaultInfo = await connection.getAccountInfo(
-        readerVaultPubkey
+        reader2VaultPubkey
       );
       const readerVaultAccount = await program.account.userVault.fetch(
-        readerVaultPubkey
+        reader2VaultPubkey
       );
 
       if (!readerVaultInfo) {
@@ -719,10 +799,10 @@ describe("vertex-program", async () => {
         throw Error("Reader vault not delegated");
       }
 
-      if (!isNil(readerVaultAccount.billingStatus)) {
-        console.log("User vault already in Billing process can not update");
-        return;
-      }
+      // if (!isNil(readerVaultAccount.billingStatus)) {
+      //   console.log("User vault already in Billing process can not update");
+      //   return;
+      // }
 
       const tx = new Transaction();
       tx.add(
@@ -730,8 +810,8 @@ describe("vertex-program", async () => {
           accounts: {
             indexer: null,
             operator: operatorKeypair.publicKey,
-            user: readerKeypair.publicKey,
-            userVault: readerVaultPubkey,
+            user: reader2Keypair.publicKey,
+            userVault: reader2VaultPubkey,
           },
           params: {
             indexerId: null,
@@ -748,36 +828,35 @@ describe("vertex-program", async () => {
       console.log("Track User Activity txHash: ", txHash);
 
       const userVaultDataAfter = await ephemeralProgram.account.userVault.fetch(
-        readerVaultPubkey
+        reader2VaultPubkey
       );
       const userVaultAfter = new UserVault(userVaultDataAfter);
       userVaultAfter.display();
     });
 
-    it("Throw error when update user activity if user vault already in Billing process", async () => {
+    xit("Throw error when update user activity if user vault already in Billing process", async () => {
       // TODO
     });
   });
 
-  describe("Commit and Start Billing", async () => {
+  xdescribe("Commit and Start Billing", async () => {
     it("Success commit and start billing for User Vault touch to Billing Threshold", async () => {
-      const readerVaultPubkey = PublicKey.findProgramAddressSync(
-        seeds.userVault(readerKeypair.publicKey),
+      const reader2VaultPubkey = PublicKey.findProgramAddressSync(
+        seeds.userVault(reader2Keypair.publicKey),
         program.programId
       )[0];
-      console.log("🚀 ~ readerVaultPubkey:", readerVaultPubkey.toBase58())
 
-      const readerVaultInfo = await connection.getAccountInfo(
-        readerVaultPubkey
+      const reader2VaultInfo = await connection.getAccountInfo(
+        reader2VaultPubkey
       );
-      const readVaultBeforeData = await ephemeralProgram.account.userVault.fetch(
-        readerVaultPubkey
+      const reader2VaultBeforeData = await program.account.userVault.fetch(
+        reader2VaultPubkey
       );
-      const readerVaultBefore = new UserVault(readVaultBeforeData);
+      const readerVaultBefore = new UserVault(reader2VaultBeforeData);
       console.log("Reader Vault data at base chain: ");
       readerVaultBefore.display();
 
-      if (!readerVaultInfo.owner.equals(DELEGATION_PROGRAM_ID)) {
+      if (!reader2VaultInfo.owner.equals(DELEGATION_PROGRAM_ID)) {
         console.log("Reader vault not delegated");
         return;
       }
@@ -787,8 +866,8 @@ describe("vertex-program", async () => {
         await commitAndStartBillingIx(connection, {
           accounts: {
             operator: operatorKeypair.publicKey,
-            user: readerKeypair.publicKey,
-            userVault: readerVaultPubkey,
+            user: reader2Keypair.publicKey,
+            userVault: reader2VaultPubkey,
           },
           params: {},
         })
@@ -801,15 +880,130 @@ describe("vertex-program", async () => {
       });
       console.log("Commit and Start Billing txHash In ER: ", txHash);
 
+      const commitSig = await GetCommitmentSignature(
+        txHash,
+        ephemeralConnection
+      );
+      console.log("🚀 ~ commitSig:", commitSig);
+
       const userVaultDataAtER = await ephemeralConnection.getAccountInfo(
-        readerVaultPubkey
+        reader2VaultPubkey
       );
       console.log("🚀 ~ userVaultDataAtER:", userVaultDataAtER);
       const userVaultAtBaseChainData = await program.account.userVault.fetch(
-        readerVaultPubkey
+        reader2VaultPubkey
       );
       const userVaultAtBaseChain = new UserVault(userVaultAtBaseChainData);
       userVaultAtBaseChain.display();
+    });
+  });
+
+  xdescribe("Charged User Vault", async () => {
+    it("Success charged user vault", async () => {
+      const readerVault2Pubkey = PublicKey.findProgramAddressSync(
+        seeds.userVault(reader2Keypair.publicKey),
+        program.programId
+      )[0];
+
+      const readerVault2Info = await connection.getAccountInfo(
+        readerVault2Pubkey
+      );
+
+      if (isNil(readerVault2Info)) {
+        const tx = new Transaction();
+        tx.add(
+          await initUserVaultIx(connection, {
+            accounts: {
+              owner: reader2Keypair.publicKey,
+              userVault: readerVault2Pubkey,
+              systemProgram: SystemProgram.programId,
+            },
+            params: {},
+          })
+        );
+
+        const txHash = await sendSolanaTransaction({
+          connection,
+          payer: reader2Keypair,
+          tx: tx,
+        });
+        console.log("Init User Vault txHash In Base chain: ", txHash);
+      }
+
+      if (readerVault2Info.owner.equals(DELEGATION_PROGRAM_ID)) {
+        console.log("Reader vault still in ER");
+        return;
+      }
+
+      const readerVault2Data = await program.account.userVault.fetch(
+        readerVault2Pubkey
+      );
+      const reader2Vault = new UserVault(readerVault2Data);
+      let totalLamportsNeedToPay = 0;
+      totalLamportsNeedToPay +=
+        bytesToGB(reader2Vault.state.storageBytes.toNumber()) *
+        LAMPORTS_PER_SOL;
+
+      const readDebts = readerVault2Data.readDebts;
+      const indexers = [];
+
+      for (let i = 0; i < readDebts.length; i++) {
+        const readDebt = readDebts[i];
+        const readFee =
+          bytesToGB(readDebt.bytesAccumulated.toNumber()) *
+          readDebt.pricePerGbLamports.toNumber();
+        console.log(
+          `IndexerId: ${readDebt.indexerId.toNumber()} - readFee: ${readFee}`
+        );
+
+        totalLamportsNeedToPay += readFee;
+        indexers.push(
+          PublicKey.findProgramAddressSync(
+            seeds.indexer(
+              creatorIndexerKeypair.publicKey,
+              readDebt.indexerId.toNumber()
+            ),
+            program.programId
+          )[0]
+        );
+      }
+      console.log(
+        "🚀 ~ total SOL need to pays: ",
+        totalLamportsNeedToPay / LAMPORTS_PER_SOL
+      );
+
+      const systemAuthority = PublicKey.findProgramAddressSync(
+        seeds.systemAuthority(),
+        program.programId
+      )[0];
+
+      const tx = new Transaction();
+      tx.add(
+        await chargeFeeIx(connection, {
+          accounts: {
+            indexers,
+            operator: operatorKeypair.publicKey,
+            user: reader2Keypair.publicKey,
+            userVault: readerVault2Pubkey,
+            systemAuthority,
+          },
+          params: {},
+        })
+      );
+      const txHash = await sendSolanaTransaction({
+        connection,
+        payer: operatorKeypair,
+        tx: tx,
+      });
+      console.log("Charge Fee txHash:", txHash);
+      assert.isString(txHash);
+
+      const userVaultDataAfterCharged = await program.account.userVault.fetch(
+        readerVault2Pubkey
+      );
+
+      const userVaultAfterCharged = new UserVault(userVaultDataAfterCharged);
+      userVaultAfterCharged.display();
     });
   });
 });

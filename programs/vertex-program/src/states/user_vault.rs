@@ -11,11 +11,8 @@ const MAX_READ_DEBT: usize = 5;
 pub const DEFAULT_INDEXER_ID: u64 = 0;
 const DEFAULT_PRICE_PER_GB_LAMPORTS: u64 = 0;
 
-#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BillingStatus {
-  Pending = 0,
-  Charged = 1,
-}
+pub const BILLING_PENDING: u8 = 0;
+pub const BILLING_CHARGED: u8 = 1;
 
 #[account]
 #[derive(Debug, InitSpace)]
@@ -25,7 +22,7 @@ pub struct UserVault {
   pub storage_bytes: u64,
   pub storage_bytes_last_billed: u64,
   pub read_debts: [ReadDebt; MAX_READ_DEBT],
-  pub billing_status: Option<BillingStatus>,
+  pub billing_status: Option<u8>,
   pub rent_lamports: u64,
 }
 
@@ -103,6 +100,16 @@ impl UserVault {
 
   pub fn refresh_read_debts(&mut self) {
     self.read_debts = [ReadDebt::default(); MAX_READ_DEBT];
+  }
+
+  pub fn is_in_billing_process(&self) -> bool {
+    if self.billing_status.is_none() {
+      return false;
+    }
+
+    self
+      .billing_status
+      .is_some_and(|status| status == BILLING_PENDING)
   }
 }
 

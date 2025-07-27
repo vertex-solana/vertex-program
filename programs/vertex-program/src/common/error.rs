@@ -32,6 +32,9 @@ pub enum VertexError {
   #[msg("User vault is in billing process")]
   UserVaultIsInBillingProcess,
 
+  #[msg("User vault not in billing process")]
+  UserVaultNotInBillingProcess,
+
   #[msg("User vault not touch threshold")]
   UserVaultNotTouchThreshold,
 

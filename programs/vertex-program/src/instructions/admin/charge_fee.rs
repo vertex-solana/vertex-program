@@ -8,7 +8,7 @@ use {
       error::VertexError,
       event::ChargeFeeEvent,
     },
-    states::{BillingStatus, Indexer, ReadDebt, SystemAuthority, UserVault, DEFAULT_INDEXER_ID},
+    states::{Indexer, ReadDebt, SystemAuthority, UserVault, BILLING_CHARGED, DEFAULT_INDEXER_ID},
     utils::math::bytes_to_gb,
   },
   anchor_lang::prelude::*,
@@ -17,13 +17,18 @@ use {
 
 pub fn process<'info>(ctx: Context<'_, '_, 'info, 'info, ChargeFee<'info>>) -> Result<()> {
   let user_vault = &mut ctx.accounts.user_vault;
+  if !user_vault.is_in_billing_process() {
+    return err!(VertexError::UserVaultNotInBillingProcess);
+  }
+
   let total_fee_debt = user_vault.calculate_total_price_user_vault()?;
 
   let remaining_lamports = user_vault.get_lamports() - user_vault.rent_lamports;
   if total_fee_debt > remaining_lamports as f64 {
     msg!(
-      "User vault not have enough for charge fee, current lamports: {}",
-      remaining_lamports
+      "User vault not have enough for charge fee, remaining_lamports: {}, total_fee_debt: {}",
+      remaining_lamports,
+      total_fee_debt
     );
     return err!(VertexError::InsufficientFundsInUserVaultForChargeFee);
   }
@@ -83,7 +88,7 @@ pub fn process<'info>(ctx: Context<'_, '_, 'info, 'info, ChargeFee<'info>>) -> R
 
   total_amount_transfer = total_amount_transfer.add(total_lamports_transfer_to_system);
 
-  user_vault.billing_status = Some(BillingStatus::Charged);
+  user_vault.billing_status = Some(BILLING_CHARGED);
   user_vault.refresh_read_debts();
 
   emit!(ChargeFeeEvent {

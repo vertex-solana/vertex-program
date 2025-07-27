@@ -14,7 +14,7 @@ interface IUserVault {
   storageBytes: BN;
   storageBytesLastBilled: BN;
   readDebts: IReadDebt[];
-  billingStatus: any;
+  billingStatus: number;
   rentLamports: BN;
 }
 

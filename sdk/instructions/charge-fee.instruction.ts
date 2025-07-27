@@ -1,5 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { getProgram } from "../utils/program";
 
 interface ChargeFeeAccounts {
@@ -19,7 +18,7 @@ interface ChargeFeePayload {
 }
 
 export const chargeFeeIx = async (
-  connection: anchor.web3.Connection,
+  connection: Connection,
   payload: ChargeFeePayload
 ): Promise<TransactionInstruction> => {
   const { accounts } = payload;

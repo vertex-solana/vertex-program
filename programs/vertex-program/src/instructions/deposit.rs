@@ -11,7 +11,7 @@ use {
 pub fn process(ctx: Context<Deposit>, amount: u64) -> Result<()> {
   let user_vault = &ctx.accounts.user_vault;
 
-  if user_vault.owner != PROGRAM_ID {
+  if user_vault.to_account_info().owner.key() != PROGRAM_ID {
     msg!("User vault already delegated");
 
     return err!(VertexError::UserVaultHadDelegated);

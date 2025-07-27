@@ -8,7 +8,7 @@ use {
       error::VertexError,
       event::{StartBillingEvent, TrackUserActivityEvent},
     },
-    states::{BillingStatus, Indexer, UserVault},
+    states::{Indexer, UserVault, BILLING_PENDING},
   },
   anchor_lang::prelude::*,
 };
@@ -44,7 +44,7 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
 
   let total_price_debt = user_vault.calculate_total_price_user_vault()?;
   if total_price_debt >= THRESHOLD_PRICE_LAMPORTS as f64 {
-    user_vault.billing_status = Some(BillingStatus::Pending);
+    user_vault.billing_status = Some(BILLING_PENDING);
 
     emit!(StartBillingEvent {
       user,
