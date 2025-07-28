@@ -1,28 +1,24 @@
 use {
   crate::{
     common::{
-      constant::{fee::TOKEN_FEE_KEY, seeds_prefix, system::OPERATOR_KEY, DISCRIMINATOR},
+      constant::{seeds_prefix, system::OPERATOR_KEY, DISCRIMINATOR},
       error::VertexError,
       event::InitSystemVaultEvent,
     },
     states::SystemAuthority,
   },
   anchor_lang::prelude::*,
-  anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-  },
 };
 
 pub fn process(ctx: Context<InitSystemVault>) -> Result<()> {
-  ctx
-    .accounts
-    .system_authority
-    .set_inner(SystemAuthority { balance: 0 });
+  let system_authority = &mut ctx.accounts.system_authority;
+  let system_authority_bump = ctx.bumps.system_authority;
+  let rent_lamports = system_authority.get_lamports();
+
+  system_authority.init(system_authority_bump, rent_lamports);
 
   emit!(InitSystemVaultEvent {
     system_authority: ctx.accounts.system_authority.key(),
-    system_vault: ctx.accounts.system_vault.key(),
   });
 
   Ok(())
@@ -44,23 +40,6 @@ pub struct InitSystemVault<'info> {
     bump
   )]
   pub system_authority: Account<'info, SystemAuthority>,
-
-  #[account(
-    constraint = mint.key() == TOKEN_FEE_KEY @ VertexError::WrongMintTokenFee
-  )]
-  pub mint: InterfaceAccount<'info, Mint>,
-
-  #[account(
-    init,
-    payer = operator,
-    associated_token::mint = mint,
-    associated_token::authority = system_authority
-  )]
-  pub system_vault: InterfaceAccount<'info, TokenAccount>,
-
-  pub token_program: Interface<'info, TokenInterface>,
-
-  pub associated_token_program: Program<'info, AssociatedToken>,
 
   pub system_program: Program<'info, System>,
 }
