@@ -10,14 +10,15 @@ use {
 };
 
 pub fn process(ctx: Context<InitUserVault>) -> Result<()> {
-  ctx.accounts.user_vault.set_inner(UserVault {
-    owner: ctx.accounts.owner.key(),
-    deposited_amount: 0,
-    remaining_amount: 0,
-  });
+  let owner = ctx.accounts.owner.key();
+  let user_vault_bump = ctx.bumps.user_vault;
+
+  let user_vault = &mut ctx.accounts.user_vault;
+  let rent_lamports = user_vault.get_lamports();
+  user_vault.init(owner, user_vault_bump, rent_lamports);
 
   emit!(InitUserVaultEvent {
-    owner: ctx.accounts.owner.key(),
+    owner,
     user_vault: ctx.accounts.user_vault.key(),
   });
 
