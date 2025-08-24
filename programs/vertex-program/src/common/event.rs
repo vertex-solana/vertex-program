@@ -25,6 +25,8 @@ pub struct DepositToVaultEvent {
 
 #[event]
 pub struct TrackUserActivityEvent {
+  pub bytes: u64,
+  pub indexer_id: Option<u64>,
   pub user: Pubkey,
   pub user_vault: Pubkey,
 }
