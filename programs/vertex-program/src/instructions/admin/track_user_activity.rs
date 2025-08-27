@@ -53,6 +53,8 @@ pub fn process(ctx: Context<TrackUserActivity>, input: TrackUserActivityInput) -
   }
 
   emit!(TrackUserActivityEvent {
+    bytes,
+    indexer_id,
     user,
     user_vault: user_vault.key(),
   });
