@@ -1,1 +1,12 @@
-export const MAGIC_BLOCK_ER_DEVNET_ENDPOINT = "https://devnet.magicblock.app/";
+export const MODES = ["devnet", "mainnet"];
+
+export const rpc = {
+  devnet: {
+    baseChain: "https://api.devnet.solana.com",
+    magicblockProvider: "https://devnet.magicblock.app/",
+  },
+  mainnet: {
+    baseChain: "https://api.devnet.solana.com",
+    magicblockProvider: "https://devnet.magicblock.app/",
+  },
+};

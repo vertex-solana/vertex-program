@@ -2,7 +2,6 @@ use {
   crate::{
     common::{
       constant::{seeds_prefix, DISCRIMINATOR},
-      error::VertexError,
       event::InitIndexerEvent,
     },
     states::Indexer,
@@ -15,12 +14,6 @@ pub fn process(
   indexer_id: u64,
   price_per_gb_lamports: u64,
 ) -> Result<()> {
-  require_gt!(
-    price_per_gb_lamports,
-    0,
-    VertexError::InvalidIndexerPriceForRead
-  );
-
   let owner = &ctx.accounts.owner;
   let bump = ctx.bumps.indexer;
 
