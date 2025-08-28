@@ -1,35 +1,49 @@
 use {
   crate::{
-    common::{
-      constant::{fee::TOKEN_FEE_KEY, seeds_prefix},
-      error::VertexError,
-      event::DepositToVaultEvent,
-    },
+    common::{constant::seeds_prefix, error::VertexError, event::DepositToVaultEvent},
     states::UserVault,
     utils::token_transfer,
+    ID,
   },
   anchor_lang::prelude::*,
-  anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-  },
 };
 
 pub fn process(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-  if amount == 0 || amount > ctx.accounts.user_ata.amount {
-    return err!(VertexError::InvalidAmountDeposit);
+  // The whole process is check the PDA that must match because we allow user deposit the fund to the vault even if the PDA is in ER
+  let user = ctx.accounts.payer.key();
+  let user_vault = {
+    let user_vault_data = ctx.accounts.user_vault.try_borrow_data()?;
+    let mut data: &[u8] = &user_vault_data;
+    UserVault::try_deserialize(&mut data)?
+  };
+  msg!("user_vault: {:#?}", user_vault);
+
+  if !user_vault.owner.eq(&user) {
+    return err!(VertexError::WrongUserVault);
   }
 
-  ctx.accounts.user_vault.deposited_amount += amount;
-  ctx.accounts.user_vault.remaining_amount += amount;
+  let (user_vault_pubkey, bump) = Pubkey::try_find_program_address(
+    &[seeds_prefix::USER_VAULT.as_ref(), user_vault.owner.as_ref()],
+    &ID,
+  )
+  .ok_or(error!(VertexError::WrongUserVault))?;
 
-  token_transfer::deposit_fee_to_vault(
-    ctx.accounts.user_ata.to_account_info(),
-    ctx.accounts.user_vault_ata.to_account_info(),
+  if !user_vault_pubkey.eq(&ctx.accounts.user_vault.key()) {
+    return err!(VertexError::WrongUserVault);
+  }
+
+  if user_vault.bump != bump {
+    return err!(VertexError::WrongUserVault);
+  }
+
+  if ctx.accounts.payer.lamports() < amount {
+    return err!(VertexError::UserNotHaveEnoughAmountToDeposit);
+  }
+
+  token_transfer::deposit_to_vault(
     ctx.accounts.payer.to_account_info(),
-    ctx.accounts.token_program.to_account_info(),
-    ctx.accounts.mint.to_account_info(),
-    ctx.accounts.mint.decimals,
+    ctx.accounts.user_vault.to_account_info(),
+    ctx.accounts.system_program.to_account_info(),
     amount,
   )?;
 
@@ -49,34 +63,11 @@ pub struct Deposit<'info> {
 
   #[account(
     mut,
-    seeds = [seeds_prefix::USER_VAULT.as_ref(), user_vault.owner.as_ref()],
-    bump
+    // seeds = [seeds_prefix::USER_VAULT.as_ref(), user_vault.owner.as_ref()],
+    // bump
   )]
-  pub user_vault: Account<'info, UserVault>,
-
-  #[account(
-    constraint = mint.key() == TOKEN_FEE_KEY @ VertexError::WrongMintTokenFee
-  )]
-  pub mint: InterfaceAccount<'info, Mint>,
-
-  #[account(
-    mut,
-    associated_token::mint = mint,
-    associated_token::authority = payer,
-  )]
-  pub user_ata: InterfaceAccount<'info, TokenAccount>,
-
-  #[account(
-    init_if_needed,
-    payer = payer,
-    associated_token::mint = mint,
-    associated_token::authority = user_vault,
-  )]
-  pub user_vault_ata: InterfaceAccount<'info, TokenAccount>,
-
-  pub token_program: Interface<'info, TokenInterface>,
-
-  pub associated_token_program: Program<'info, AssociatedToken>,
+  /// CHECK: checked in process
+  pub user_vault: AccountInfo<'info>,
 
   pub system_program: Program<'info, System>,
 }

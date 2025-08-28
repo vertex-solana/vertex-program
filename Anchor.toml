@@ -1,5 +1,7 @@
 [toolchain]
-solana-cli = "2.1.5"
+solana-cli = "2.1.21"
+channel = "1.82.0"
+anchor = "0.31.1"
 
 [features]
 resolution = true
@@ -8,11 +10,14 @@ skip-lint = false
 [programs.localnet]
 vertex_program = "9bRE8rbemawE439Fyh91LSnG83hrsSaGg4pjuJ7CpEPT"
 
+[programs.devnet]
+vertex_program = "AtanB6GFaMXuM8mBUgSJUMwtKEB7ii35LAUwAQwdEsFf"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
