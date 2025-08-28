@@ -80,10 +80,7 @@ fn update_read_debt(
 }
 
 fn update_storage(user_vault: &mut UserVault, bytes: u64) -> Result<()> {
-  user_vault.storage_bytes = user_vault
-    .storage_bytes
-    .checked_add(bytes)
-    .ok_or(VertexError::Overflow)?;
+  user_vault.storage_bytes = bytes;
 
   Ok(())
 }
