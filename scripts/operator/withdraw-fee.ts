@@ -8,7 +8,7 @@ import {
 } from "@solana/web3.js";
 import bs58 from "bs58";
 import { getProgram } from "../get-program";
-import { depositIx, seeds } from "../../sdk";
+import { seeds, withdrawFeeIx } from "../../sdk";
 
 import * as dotenv from "dotenv";
 import { sendSolanaTransaction } from "../../tests/utils";
@@ -30,23 +30,24 @@ console.log("connection magicblock provider", connectionER.rpcEndpoint);
 
 const program = getProgram(connection);
 
-const userKeypair = Keypair.fromSecretKey(bs58.decode(""));
-console.log("User public key", userKeypair.publicKey.toBase58());
+const operatorKeypair = Keypair.fromSecretKey(bs58.decode(""));
+console.log("Operator public key", operatorKeypair.publicKey.toBase58());
 
 const execute = async () => {
   const amount = 10;
-  console.log(`Depositing ${amount} SOL...`);
+  console.log(`Withdraw ${amount} SOL...`);
 
-  const userVault = PublicKey.findProgramAddressSync(
-    seeds.userVault(userKeypair.publicKey),
+  const systemAuthority = PublicKey.findProgramAddressSync(
+    seeds.systemAuthority(),
     program.programId
   )[0];
 
   const tx = new Transaction();
-  const ix = await depositIx(connection, {
+  const ix = await withdrawFeeIx(connection, {
     accounts: {
-      payer: userKeypair.publicKey,
-      userVault: userVault,
+      destination: operatorKeypair.publicKey,
+      operator: operatorKeypair.publicKey,
+      systemAuthority: systemAuthority,
     },
     params: {
       amount: new BN(amount * LAMPORTS_PER_SOL),
@@ -56,10 +57,10 @@ const execute = async () => {
 
   const txHash = await sendSolanaTransaction({
     connection,
-    payer: userKeypair,
+    payer: operatorKeypair,
     tx,
   });
-  console.log("Deposit user vault txHash: ", txHash);
+  console.log("Withdraw Authority Fee txHash: ", txHash);
 };
 
 execute();

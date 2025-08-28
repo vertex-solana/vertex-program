@@ -1,7 +1,7 @@
 import { clusterApiUrl, Connection } from "@solana/web3.js";
-import { MAGIC_BLOCK_ER_DEVNET_ENDPOINT } from "../constant";
 import { EventParser } from "@coral-xyz/anchor";
 import { getProgram } from "../get-program";
+import { rpc } from "../constant";
 
 const execute = async (payload: { txHash: string; isTxInER: boolean }) => {
   const { isTxInER, txHash } = payload;
@@ -9,7 +9,7 @@ const execute = async (payload: { txHash: string; isTxInER: boolean }) => {
   let connection: Connection;
 
   if (isTxInER) {
-    connection = new Connection(MAGIC_BLOCK_ER_DEVNET_ENDPOINT);
+    connection = new Connection(rpc.devnet.magicblockProvider);
   } else {
     connection = new Connection(clusterApiUrl("devnet"));
   }
@@ -25,6 +25,6 @@ const execute = async (payload: { txHash: string; isTxInER: boolean }) => {
 };
 
 execute({
-  txHash: "2buJsZfaJ6HmEPL1HYYcdWddYf3AEygcWt58nKPq8LKwm7DEMUJPu87VTduMGubyybp6LRnC11Vvpzo9mVZET3Sp",
+  txHash: "2Keu7vhiWEwbGgZSPzXw3E4Vudc6KnzWfBoiHLCKSbVevVSzF3YkR49zqgo77WJnzPZmSdtcBRaucvwrWZ1KEwyN",
   isTxInER: true,
 });
